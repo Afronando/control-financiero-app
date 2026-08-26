@@ -8,6 +8,8 @@ import '../widgets/add_expense_sheet.dart';
 import '../widgets/add_income_sheet.dart';
 import '../widgets/animated_money.dart';
 import '../widgets/category_badge.dart';
+import '../widgets/fade_slide_in.dart';
+import '../widgets/glass.dart';
 import '../widgets/slide_fade_route.dart';
 import 'annual_screen.dart';
 import 'budget_screen.dart';
@@ -55,6 +57,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   late int _year;
   late int _month;
+  int _rowIndex = 0;
 
   @override
   void initState() {
@@ -110,11 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
     await widget.api.logout();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => LoginScreen(
-          api: widget.api,
-          themeController: widget.themeController,
-        ),
+      SlideFadeRoute(
+        page: LoginScreen(api: widget.api, themeController: widget.themeController),
       ),
       (route) => false,
     );
@@ -128,12 +128,14 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _error != null
-            ? _ErrorView(message: _error!, onRetry: _load)
-            : RefreshIndicator(onRefresh: _load, child: _buildBody()),
+      body: AppBackground(
+        child: SafeArea(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+              ? _ErrorView(message: _error!, onRetry: _load)
+              : RefreshIndicator(onRefresh: _load, child: _buildBody()),
+        ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       floatingActionButton: _BottomActionBar(
@@ -154,6 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     final dates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    _rowIndex = 0;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
@@ -265,31 +268,28 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 28),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Presupuesto 50/30/20',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 14),
-                for (final g in d.groups.where(
-                  (g) => g.group != 'deuda' || g.actual > 0,
-                ))
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: _GroupBar(
-                      label: groupLabels[g.group] ?? g.group,
-                      actual: g.actual,
-                      target: g.targetAmount,
-                      currency: d.currency,
-                    ),
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Presupuesto 50/30/20',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 14),
+              for (final g in d.groups.where(
+                (g) => g.group != 'deuda' || g.actual > 0,
+              ))
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _GroupBar(
+                    label: groupLabels[g.group] ?? g.group,
+                    actual: g.actual,
+                    target: g.targetAmount,
+                    currency: d.currency,
                   ),
-              ],
-            ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 20),
@@ -326,18 +326,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           for (final t in grouped[date]!)
-            Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
-                leading: CategoryBadge(
-                  categoryId: t.category.id,
-                  iconValue: t.category.emoji,
-                ),
-                title: Text(t.category.name),
-                subtitle: t.concept.isNotEmpty ? Text(t.concept) : null,
-                trailing: Text(
-                  '${d.currency}${NumberFormat('#,##0.00', 'es').format(t.amount)}',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
+            FadeSlideIn(
+              index: _rowIndex++,
+              child: GlassCard(
+                blur: false,
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CategoryBadge(
+                    categoryId: t.category.id,
+                    iconValue: t.category.emoji,
+                  ),
+                  title: Text(t.category.name),
+                  subtitle: t.concept.isNotEmpty ? Text(t.concept) : null,
+                  trailing: Text(
+                    '${d.currency}${NumberFormat('#,##0.00', 'es').format(t.amount)}',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
             ),
@@ -378,18 +384,7 @@ class _TopIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surface,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(9),
-          child: Icon(icon, size: 18),
-        ),
-      ),
-    );
+    return GlassIconButton(icon: icon, onTap: onTap, size: 38, iconSize: 18);
   }
 }
 
@@ -442,7 +437,6 @@ class _GroupBar extends StatelessWidget {
     final pct = target > 0 ? (actual / target).clamp(0, 1).toDouble() : 0.0;
     final trackBg = Theme.of(context).colorScheme.surfaceContainerHighest;
     final errorColor = Theme.of(context).colorScheme.error;
-    final onSurface = Theme.of(context).colorScheme.onSurface;
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
 
     return Column(
@@ -480,11 +474,20 @@ class _GroupBar extends StatelessWidget {
             tween: Tween(begin: 0, end: pct),
             duration: const Duration(milliseconds: 700),
             curve: Curves.easeOutCubic,
-            builder: (context, animatedPct, _) => LinearProgressIndicator(
-              value: animatedPct,
-              minHeight: 8,
-              backgroundColor: trackBg,
-              valueColor: AlwaysStoppedAnimation(over ? errorColor : onSurface),
+            builder: (context, animatedPct, _) => Stack(
+              children: [
+                Container(height: 8, color: trackBg),
+                FractionallySizedBox(
+                  widthFactor: animatedPct,
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      gradient: over ? null : AppGradients.accent,
+                      color: over ? errorColor : null,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -517,10 +520,8 @@ class _BottomActionBar extends StatefulWidget {
 class _BottomActionBarState extends State<_BottomActionBar> {
   Future<void> _addExpense() async {
     if (widget.categories.isEmpty) return;
-    final result = await showModalBottomSheet<bool>(
+    final result = await showGlassSheet<bool>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (_) => AddExpenseSheet(
         api: widget.api,
         categories: widget.categories,
@@ -528,45 +529,56 @@ class _BottomActionBarState extends State<_BottomActionBar> {
         month: widget.month,
       ),
     );
-    if (result == true) widget.onDone();
+    if (result == true) {
+      widget.onDone();
+      if (mounted) AppToast.success(context, 'Gasto agregado');
+    }
   }
 
   Future<void> _addIncome() async {
-    final result = await showModalBottomSheet<bool>(
+    final result = await showGlassSheet<bool>(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
       builder: (_) => AddIncomeSheet(
         api: widget.api,
         year: widget.year,
         month: widget.month,
       ),
     );
-    if (result == true) widget.onDone();
+    if (result == true) {
+      widget.onDone();
+      if (mounted) AppToast.success(context, 'Ingreso agregado');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        FloatingActionButton(
-          heroTag: 'addIncome',
-          backgroundColor: scheme.surface,
-          foregroundColor: scheme.onSurface,
-          elevation: 1,
-          onPressed: _addIncome,
-          child: const Icon(Icons.arrow_downward),
-        ),
+        GlassIconButton(icon: Icons.arrow_downward, onTap: _addIncome, size: 56, iconSize: 22),
         const SizedBox(width: 12),
-        FloatingActionButton.extended(
-          heroTag: 'addExpense',
-          backgroundColor: scheme.primary,
-          foregroundColor: scheme.onPrimary,
-          onPressed: _addExpense,
-          icon: const Icon(Icons.add),
-          label: const Text('Gasto'),
+        PressableScale(
+          onTap: _addExpense,
+          child: Container(
+            height: 56,
+            padding: const EdgeInsets.symmetric(horizontal: 22),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: AppGradients.accent,
+              borderRadius: BorderRadius.circular(28),
+              boxShadow: [
+                BoxShadow(color: AppGradients.purple.withValues(alpha: 0.4), blurRadius: 24, offset: const Offset(0, 10)),
+              ],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add, color: Colors.white),
+                SizedBox(width: 6),
+                Text('Gasto', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
         ),
       ],
     );

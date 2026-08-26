@@ -582,6 +582,33 @@ class ApiClient {
     }
   }
 
+  Future<void> deleteAccount(String password) async {
+    final res = await http.delete(
+      Uri.parse('$apiBaseUrl/api/mobile/account'),
+      headers: _authHeaders,
+      body: jsonEncode({'password': password}),
+    );
+    if (res.statusCode != 200) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(body['error'] ?? 'No se pudo eliminar la cuenta', res.statusCode);
+    }
+    _token = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('mobile_token');
+  }
+
+  Future<void> submitFeedback(String message) async {
+    final res = await http.post(
+      Uri.parse('$apiBaseUrl/api/mobile/feedback'),
+      headers: _authHeaders,
+      body: jsonEncode({'message': message}),
+    );
+    if (res.statusCode != 201) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(body['error'] ?? 'No se pudo enviar la sugerencia', res.statusCode);
+    }
+  }
+
   Future<PartnershipStatus> getPartnershipStatus() async {
     final res = await http.get(Uri.parse('$apiBaseUrl/api/mobile/partnership'), headers: _authHeaders);
     if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);

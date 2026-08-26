@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api_client.dart';
+import 'glass.dart';
 
 class AddIncomeSheet extends StatefulWidget {
   final ApiClient api;
@@ -73,11 +74,10 @@ class _AddIncomeSheetState extends State<AddIncomeSheet> {
             Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
           const SizedBox(height: 16),
-          ElevatedButton(
+          GradientButton(
+            label: 'Guardar ingreso',
+            loading: _saving,
             onPressed: _saving ? null : _submit,
-            child: _saving
-                ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Guardar ingreso'),
           ),
         ],
       ),

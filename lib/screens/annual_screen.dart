@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../api_client.dart';
 import '../widgets/animated_money.dart';
+import '../widgets/fade_slide_in.dart';
+import '../widgets/glass.dart';
 
 const _monthNames = [
   'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
@@ -50,7 +52,7 @@ class _AnnualScreenState extends State<AnnualScreen> {
   Widget build(BuildContext context) {
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return Scaffold(
-      appBar: AppBar(
+      appBar: GlassAppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -60,20 +62,29 @@ class _AnnualScreenState extends State<AnnualScreen> {
           ],
         ),
       ),
-      body: _error != null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(_error!, style: TextStyle(color: muted)),
-                  const SizedBox(height: 12),
-                  ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
-                ],
-              ),
-            )
-          : _summary == null
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(onRefresh: _load, child: _buildBody()),
+      extendBodyBehindAppBar: true,
+      body: AppBackground(
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.of(context).padding.top),
+            child: _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(_error!, style: TextStyle(color: muted)),
+                        const SizedBox(height: 12),
+                        ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
+                      ],
+                    ),
+                  )
+                : _summary == null
+                ? const Center(child: CircularProgressIndicator())
+                : RefreshIndicator(onRefresh: _load, child: _buildBody()),
+          ),
+        ),
+      ),
     );
   }
 
@@ -87,24 +98,31 @@ class _AnnualScreenState extends State<AnnualScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Row(
-          children: [
-            Expanded(child: _TotalCard(label: 'Ingresos', value: s.totalIncome, currency: s.currency)),
-            const SizedBox(width: 10),
-            Expanded(child: _TotalCard(label: 'Gastos', value: s.totalGasto, currency: s.currency)),
-          ],
+        FadeSlideIn(
+          index: 0,
+          child: Row(
+            children: [
+              Expanded(child: _TotalCard(label: 'Ingresos', value: s.totalIncome, currency: s.currency)),
+              const SizedBox(width: 10),
+              Expanded(child: _TotalCard(label: 'Gastos', value: s.totalGasto, currency: s.currency)),
+            ],
+          ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: _TotalCard(label: 'Ahorro', value: s.totalAhorro, currency: s.currency)),
-            const SizedBox(width: 10),
-            Expanded(child: _TotalCard(label: 'Deudas', value: s.totalDeuda, currency: s.currency)),
-          ],
+        FadeSlideIn(
+          index: 1,
+          child: Row(
+            children: [
+              Expanded(child: _TotalCard(label: 'Ahorro', value: s.totalAhorro, currency: s.currency)),
+              const SizedBox(width: 10),
+              Expanded(child: _TotalCard(label: 'Deudas', value: s.totalDeuda, currency: s.currency)),
+            ],
+          ),
         ),
         const SizedBox(height: 24),
-        Card(
-          child: Padding(
+        FadeSlideIn(
+          index: 2,
+          child: GlassCard(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,21 +164,19 @@ class _TotalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
-            const SizedBox(height: 4),
-            AnimatedMoney(
-              value: value,
-              currency: currency,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-            ),
-          ],
-        ),
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12)),
+          const SizedBox(height: 4),
+          AnimatedMoney(
+            value: value,
+            currency: currency,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
+        ],
       ),
     );
   }
@@ -175,7 +191,6 @@ class _MonthBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final onSurface = Theme.of(context).colorScheme.onSurface;
     final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     final incomeH = maxVal > 0 ? (income / maxVal) * 120 : 0.0;
     final gastoH = maxVal > 0 ? (gasto / maxVal) * 120 : 0.0;
@@ -198,7 +213,7 @@ class _MonthBar extends StatelessWidget {
                   height: h,
                   margin: const EdgeInsets.symmetric(horizontal: 1),
                   decoration: BoxDecoration(
-                    color: onSurface,
+                    gradient: AppGradients.accent,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),

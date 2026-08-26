@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../api_client.dart';
 import '../theme_controller.dart';
+import '../widgets/fade_slide_in.dart';
+import '../widgets/glass.dart';
+import '../widgets/slide_fade_route.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -42,7 +45,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await widget.api.logout();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => LoginScreen(api: widget.api, themeController: widget.themeController)),
+      SlideFadeRoute(page: LoginScreen(api: widget.api, themeController: widget.themeController)),
+      (route) => false,
+    );
+  }
+
+  Future<void> _goToLoginAfterDelete(BuildContext context) async {
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      SlideFadeRoute(page: LoginScreen(api: widget.api, themeController: widget.themeController)),
       (route) => false,
     );
   }
@@ -64,70 +75,283 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    var i = 0;
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajustes')),
-      body: _error != null
-          ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                  const SizedBox(height: 12),
-                  ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
-                ],
-              ),
-            )
-          : (_account == null || _partnership == null)
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _sectionLabel('APARIENCIA'),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: AnimatedBuilder(
-                        animation: widget.themeController,
-                        builder: (context, _) {
-                          return SegmentedButton<ThemeMode>(
-                            segments: const [
-                              ButtonSegment(value: ThemeMode.light, label: Text('Claro'), icon: Icon(Icons.light_mode)),
-                              ButtonSegment(value: ThemeMode.dark, label: Text('Oscuro'), icon: Icon(Icons.dark_mode)),
-                              ButtonSegment(
-                                value: ThemeMode.system,
-                                label: Text('Sistema'),
-                                icon: Icon(Icons.settings_suggest),
-                              ),
-                            ],
-                            selected: {widget.themeController.mode},
-                            onSelectionChanged: (s) => widget.themeController.setMode(s.first),
-                          );
-                        },
+      appBar: const GlassAppBar(title: Text('Ajustes')),
+      extendBodyBehindAppBar: true,
+      body: AppBackground(
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.only(top: kToolbarHeight + MediaQuery.of(context).padding.top),
+            child: _error != null
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      const SizedBox(height: 12),
+                      ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
+                    ],
+                  ),
+                )
+              : (_account == null || _partnership == null)
+              ? const Center(child: CircularProgressIndicator())
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    children: [
+                      _sectionLabel('APARIENCIA'),
+                      FadeSlideIn(
+                        index: i++,
+                        child: GlassCard(
+                          child: AnimatedBuilder(
+                            animation: widget.themeController,
+                            builder: (context, _) {
+                              return SegmentedButton<ThemeMode>(
+                                segments: const [
+                                  ButtonSegment(value: ThemeMode.light, label: Text('Claro'), icon: Icon(Icons.light_mode)),
+                                  ButtonSegment(value: ThemeMode.dark, label: Text('Oscuro'), icon: Icon(Icons.dark_mode)),
+                                  ButtonSegment(
+                                    value: ThemeMode.system,
+                                    label: Text('Sistema'),
+                                    icon: Icon(Icons.settings_suggest),
+                                  ),
+                                ],
+                                selected: {widget.themeController.mode},
+                                onSelectionChanged: (s) => widget.themeController.setMode(s.first),
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 20),
+                      _sectionLabel('CUENTA'),
+                      FadeSlideIn(
+                        index: i++,
+                        child: _AccountCard(api: widget.api, account: _account!, onUpdated: _load),
+                      ),
+                      const SizedBox(height: 20),
+                      _sectionLabel('PRESUPUESTO 50/30/20'),
+                      FadeSlideIn(
+                        index: i++,
+                        child: _BudgetPercentagesCard(api: widget.api, account: _account!, onUpdated: _load),
+                      ),
+                      const SizedBox(height: 20),
+                      _sectionLabel('PRESUPUESTO COMPARTIDO EN PAREJA'),
+                      FadeSlideIn(
+                        index: i++,
+                        child: _PartnershipCard(api: widget.api, status: _partnership!, onUpdated: _load),
+                      ),
+                      const SizedBox(height: 20),
+                      _sectionLabel('PRÓXIMAMENTE'),
+                      FadeSlideIn(
+                        index: i++,
+                        child: const Row(
+                          children: [
+                            Expanded(
+                              child: _ComingSoonCard(icon: Icons.chat_bubble_outline, label: 'WhatsApp'),
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: _ComingSoonCard(icon: Icons.mail_outline, label: 'Correo'),
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: _ComingSoonCard(icon: Icons.apple, label: 'Apple Pay'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _sectionLabel('AYUDA'),
+                      FadeSlideIn(index: i++, child: _FeedbackCard(api: widget.api)),
+                      const SizedBox(height: 20),
+                      FadeSlideIn(
+                        index: i++,
+                        child: GlassCard(
+                          padding: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: const Icon(Icons.logout),
+                            title: const Text('Cerrar sesión'),
+                            onTap: () => _logout(context),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      FadeSlideIn(
+                        index: i++,
+                        child: _DeleteAccountCard(
+                          api: widget.api,
+                          onDeleted: () => _goToLoginAfterDelete(context),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  _sectionLabel('CUENTA'),
-                  _AccountCard(api: widget.api, account: _account!, onUpdated: _load),
-                  const SizedBox(height: 20),
-                  _sectionLabel('PRESUPUESTO 50/30/20'),
-                  _BudgetPercentagesCard(api: widget.api, account: _account!, onUpdated: _load),
-                  const SizedBox(height: 20),
-                  _sectionLabel('PRESUPUESTO COMPARTIDO EN PAREJA'),
-                  _PartnershipCard(api: widget.api, status: _partnership!, onUpdated: _load),
-                  const SizedBox(height: 20),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.logout),
-                      title: const Text('Cerrar sesión'),
-                      onTap: () => _logout(context),
-                    ),
-                  ),
-                ],
+                ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ComingSoonCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _ComingSoonCard({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      blur: false,
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      child: Column(
+        children: [
+          Icon(icon, color: AppGradients.purple),
+          const SizedBox(height: 6),
+          Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}
+
+class _FeedbackCard extends StatefulWidget {
+  final ApiClient api;
+  const _FeedbackCard({required this.api});
+
+  @override
+  State<_FeedbackCard> createState() => _FeedbackCardState();
+}
+
+class _FeedbackCardState extends State<_FeedbackCard> {
+  final _controller = TextEditingController();
+  bool _saving = false;
+  String? _error;
+
+  Future<void> _submit() async {
+    final message = _controller.text.trim();
+    if (message.isEmpty) {
+      setState(() => _error = 'Escribe un mensaje.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await widget.api.submitFeedback(message);
+      _controller.clear();
+      if (mounted) AppToast.success(context, '¡Gracias por tu sugerencia!');
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Enviar sugerencia', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _controller,
+            maxLines: 3,
+            maxLength: 2000,
+            decoration: const InputDecoration(hintText: '¿Qué te gustaría que mejoráramos?'),
+          ),
+          if (_error != null) ...[
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+            const SizedBox(height: 8),
+          ],
+          GradientButton(label: 'Enviar', loading: _saving, onPressed: _saving ? null : _submit),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeleteAccountCard extends StatefulWidget {
+  final ApiClient api;
+  final VoidCallback onDeleted;
+  const _DeleteAccountCard({required this.api, required this.onDeleted});
+
+  @override
+  State<_DeleteAccountCard> createState() => _DeleteAccountCardState();
+}
+
+class _DeleteAccountCardState extends State<_DeleteAccountCard> {
+  Future<void> _confirmDelete() async {
+    final passwordController = TextEditingController();
+    String? error;
+    bool busy = false;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Eliminar cuenta'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Esto elimina permanentemente tus transacciones, categorías, deudas, metas e ingresos. No se puede deshacer.',
               ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Confirma tu contraseña'),
+              ),
+              if (error != null) ...[
+                const SizedBox(height: 8),
+                Text(error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setState(() => busy = true);
+                      try {
+                        await widget.api.deleteAccount(passwordController.text);
+                        if (context.mounted) Navigator.pop(context, true);
+                      } on ApiException catch (e) {
+                        setState(() {
+                          error = e.message;
+                          busy = false;
+                        });
+                      }
+                    },
+              child: const Text('Eliminar'),
             ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed == true) widget.onDeleted();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      blur: false,
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        leading: Icon(Icons.delete_outline, color: Theme.of(context).colorScheme.error),
+        title: Text('Eliminar cuenta', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+        onTap: _confirmDelete,
+      ),
     );
   }
 }
@@ -160,8 +384,9 @@ class _AccountCardState extends State<_AccountCard> {
     try {
       await widget.api.updateAccount(name: name);
       widget.onUpdated();
+      if (mounted) AppToast.success(context, 'Nombre actualizado');
     } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      if (mounted) AppToast.error(context, e.message);
     }
   }
 
@@ -215,13 +440,14 @@ class _AccountCardState extends State<_AccountCard> {
       ),
     );
     if (result == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Contraseña actualizada')));
+      AppToast.success(context, 'Contraseña actualizada');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return GlassCard(
+      padding: EdgeInsets.zero,
       child: Column(
         children: [
           ListTile(
@@ -276,6 +502,7 @@ class _BudgetPercentagesCardState extends State<_BudgetPercentagesCard> {
     try {
       await widget.api.updateBudgetPercentages(necesidadPct: _necesidad, deseoPct: _deseo, futuroPct: _futuro);
       widget.onUpdated();
+      if (mounted) AppToast.success(context, 'Presupuesto actualizado');
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -288,7 +515,13 @@ class _BudgetPercentagesCardState extends State<_BudgetPercentagesCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('$label: ${value.toStringAsFixed(0)}%'),
-        Slider(value: value, min: 0, max: 100, divisions: 100, onChanged: onChanged),
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            activeTrackColor: AppGradients.purple,
+            thumbColor: AppGradients.purple,
+          ),
+          child: Slider(value: value, min: 0, max: 100, divisions: 100, onChanged: onChanged),
+        ),
       ],
     );
   }
@@ -297,38 +530,27 @@ class _BudgetPercentagesCardState extends State<_BudgetPercentagesCard> {
   Widget build(BuildContext context) {
     final total = _necesidad + _deseo + _futuro;
     final valid = (total - 100).abs() <= 0.5;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _slider('Necesidades', _necesidad, (v) => setState(() => _necesidad = v)),
-            _slider('Deseos', _deseo, (v) => setState(() => _deseo = v)),
-            _slider('Futuro', _futuro, (v) => setState(() => _futuro = v)),
-            Text(
-              'Suma: ${total.toStringAsFixed(0)}%',
-              style: TextStyle(
-                color: valid ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.error,
-                fontSize: 12,
-              ),
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _slider('Necesidades', _necesidad, (v) => setState(() => _necesidad = v)),
+          _slider('Deseos', _deseo, (v) => setState(() => _deseo = v)),
+          _slider('Futuro', _futuro, (v) => setState(() => _futuro = v)),
+          Text(
+            'Suma: ${total.toStringAsFixed(0)}%',
+            style: TextStyle(
+              color: valid ? Theme.of(context).colorScheme.onSurfaceVariant : Theme.of(context).colorScheme.error,
+              fontSize: 12,
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
-            ],
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: (_saving || !valid) ? null : _save,
-                child: _saving
-                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Guardar'),
-              ),
-            ),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
           ],
-        ),
+          const SizedBox(height: 12),
+          GradientButton(label: 'Guardar', loading: _saving, onPressed: (_saving || !valid) ? null : _save),
+        ],
       ),
     );
   }
@@ -350,7 +572,7 @@ class _PartnershipCardState extends State<_PartnershipCard> {
   bool _busy = false;
   String? _error;
 
-  Future<void> _run(Future<void> Function() action) async {
+  Future<void> _run(Future<void> Function() action, {String? successMessage}) async {
     setState(() {
       _busy = true;
       _error = null;
@@ -358,6 +580,7 @@ class _PartnershipCardState extends State<_PartnershipCard> {
     try {
       await action();
       widget.onUpdated();
+      if (successMessage != null && mounted) AppToast.success(context, successMessage);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -409,9 +632,11 @@ class _PartnershipCardState extends State<_PartnershipCard> {
             const SizedBox(height: 12),
             Row(
               children: [
-                ElevatedButton(
-                  onPressed: _busy ? null : () => _run(() => widget.api.acceptPartnership(s.id!)),
-                  child: const Text('Aceptar'),
+                Expanded(
+                  child: GradientButton(
+                    label: 'Aceptar',
+                    onPressed: _busy ? null : () => _run(() => widget.api.acceptPartnership(s.id!), successMessage: '¡Vinculado!'),
+                  ),
                 ),
                 const SizedBox(width: 8),
                 OutlinedButton(
@@ -458,14 +683,14 @@ class _PartnershipCardState extends State<_PartnershipCard> {
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _busy
-                    ? null
-                    : () => _run(() => widget.api.invitePartner(_emailController.text.trim())),
-                child: const Text('Enviar invitación'),
-              ),
+            GradientButton(
+              label: 'Enviar invitación',
+              onPressed: _busy
+                  ? null
+                  : () => _run(
+                      () => widget.api.invitePartner(_emailController.text.trim()),
+                      successMessage: 'Invitación enviada',
+                    ),
             ),
             const SizedBox(height: 16),
             Row(
@@ -495,7 +720,10 @@ class _PartnershipCardState extends State<_PartnershipCard> {
               child: OutlinedButton(
                 onPressed: _busy
                     ? null
-                    : () => _run(() => widget.api.joinPartnershipByCode(_codeController.text.trim())),
+                    : () => _run(
+                        () => widget.api.joinPartnershipByCode(_codeController.text.trim()),
+                        successMessage: '¡Vinculado!',
+                      ),
                 child: const Text('Unirme'),
               ),
             ),
@@ -503,19 +731,16 @@ class _PartnershipCardState extends State<_PartnershipCard> {
         );
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            content,
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
-            ],
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          content,
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error, fontSize: 12)),
           ],
-        ),
+        ],
       ),
     );
   }
