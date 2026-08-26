@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../api_client.dart';
 import '../constants.dart';
+import '../widgets/animated_money.dart';
 
 class BudgetScreen extends StatefulWidget {
   final ApiClient api;
@@ -40,7 +41,14 @@ class _BudgetScreenState extends State<BudgetScreen> {
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${line.emoji} ${line.name}'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            categoryIcon(line.emoji, size: 18),
+            const SizedBox(width: 8),
+            Text(line.name),
+          ],
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -136,14 +144,30 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    '${iconOrFallback(line.emoji, fallback: '')} ${line.name}'.trim(),
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      categoryIcon(line.emoji, size: 16, color: Colors.white70),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        line.name,
+                                        style: const TextStyle(fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
                                   ),
                                   Row(
                                     children: [
+                                      AnimatedMoney(
+                                        value: line.actual,
+                                        style: TextStyle(
+                                          color: line.actual > line.estimated && line.estimated > 0
+                                              ? Colors.redAccent
+                                              : Colors.white60,
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                       Text(
-                                        '${_money(line.actual)} / ${_money(line.estimated)}',
+                                        ' / ${_money(line.estimated)}',
                                         style: TextStyle(
                                           color: line.actual > line.estimated && line.estimated > 0
                                               ? Colors.redAccent
@@ -160,16 +184,24 @@ class _BudgetScreenState extends State<BudgetScreen> {
                               const SizedBox(height: 6),
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(6),
-                                child: LinearProgressIndicator(
-                                  value: line.estimated > 0
-                                      ? (line.actual / line.estimated).clamp(0, 1).toDouble()
-                                      : 0,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.white12,
-                                  valueColor: AlwaysStoppedAnimation(
-                                    line.actual > line.estimated && line.estimated > 0
-                                        ? Colors.redAccent
-                                        : Colors.white,
+                                child: TweenAnimationBuilder<double>(
+                                  tween: Tween(
+                                    begin: 0,
+                                    end: line.estimated > 0
+                                        ? (line.actual / line.estimated).clamp(0, 1).toDouble()
+                                        : 0,
+                                  ),
+                                  duration: const Duration(milliseconds: 700),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, animatedPct, _) => LinearProgressIndicator(
+                                    value: animatedPct,
+                                    minHeight: 6,
+                                    backgroundColor: Colors.white12,
+                                    valueColor: AlwaysStoppedAnimation(
+                                      line.actual > line.estimated && line.estimated > 0
+                                          ? Colors.redAccent
+                                          : Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),

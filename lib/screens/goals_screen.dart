@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../api_client.dart';
+import '../constants.dart';
+import '../widgets/animated_money.dart';
 
 class GoalsScreen extends StatefulWidget {
   final ApiClient api;
@@ -92,11 +94,17 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   ? ListView(
                       children: const [
                         Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Text(
-                            'Aún no tienes metas de ahorro.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white60),
+                          padding: EdgeInsets.fromLTRB(32, 96, 32, 32),
+                          child: Column(
+                            children: [
+                              Icon(Icons.flag_outlined, size: 40, color: Colors.white24),
+                              SizedBox(height: 12),
+                              Text(
+                                'Aún no tienes metas de ahorro.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white60),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -118,9 +126,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
-                                      child: Text(
-                                        '${g.emoji} ${g.name}',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                                      child: Row(
+                                        children: [
+                                          categoryIcon(g.emoji, size: 18),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              g.name,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     if (g.completed)
@@ -131,25 +150,38 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      '${g.progressPct.toStringAsFixed(0)}%',
+                                    AnimatedPercent(
+                                      value: g.progressPct,
                                       style: const TextStyle(fontWeight: FontWeight.w700),
                                     ),
-                                    Text(
-                                      '${_money(g.saved)} de ${_money(g.targetAmount)}',
-                                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                    Row(
+                                      children: [
+                                        AnimatedMoney(
+                                          value: g.saved,
+                                          style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                        ),
+                                        Text(
+                                          ' de ${_money(g.targetAmount)}',
+                                          style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 6),
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(6),
-                                  child: LinearProgressIndicator(
-                                    value: pct,
-                                    minHeight: 8,
-                                    backgroundColor: Colors.white12,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      g.completed ? Colors.greenAccent : Colors.white,
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween(begin: 0, end: pct),
+                                    duration: const Duration(milliseconds: 700),
+                                    curve: Curves.easeOutCubic,
+                                    builder: (context, animatedPct, _) => LinearProgressIndicator(
+                                      value: animatedPct,
+                                      minHeight: 8,
+                                      backgroundColor: Colors.white12,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        g.completed ? Colors.greenAccent : Colors.white,
+                                      ),
                                     ),
                                   ),
                                 ),

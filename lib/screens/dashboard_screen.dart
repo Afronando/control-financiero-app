@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../api_client.dart';
 import '../constants.dart';
 import '../widgets/add_expense_sheet.dart';
+import '../widgets/animated_money.dart';
+import '../widgets/spending_gauge.dart';
 import 'login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -102,24 +104,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
       children: [
         Row(
           children: [
-            Expanded(child: _StatCard(label: 'Ingresos', value: _money(d.income))),
+            Expanded(
+              child: _StatCard(label: 'Ingresos', value: d.income, currency: d.currency),
+            ),
             const SizedBox(width: 10),
-            Expanded(child: _StatCard(label: 'Gastos', value: _money(d.totalExpenses))),
+            Expanded(
+              child: _StatCard(label: 'Gastos', value: d.totalExpenses, currency: d.currency),
+            ),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _StatCard(label: 'Deudas', value: _money(d.totalDebt))),
+            Expanded(
+              child: _StatCard(label: 'Deudas', value: d.totalDebt, currency: d.currency),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: _StatCard(
                 label: 'Disponible',
-                value: _money(d.disponible),
+                value: d.disponible,
+                currency: d.currency,
                 accent: d.disponible < 0 ? Colors.redAccent : null,
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: SpendingGauge(spent: d.totalExpenses, limit: d.spendingLimit, currency: d.currency),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         Card(
@@ -130,8 +148,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 const Text('Puedes gastar hoy', style: TextStyle(color: Colors.white60, fontSize: 12)),
                 const SizedBox(height: 4),
-                Text(
-                  _money(d.safeToSpendPerDay),
+                AnimatedMoney(
+                  value: d.safeToSpendPerDay,
+                  currency: d.currency,
                   style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 2),
@@ -159,7 +178,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       label: groupLabels[g.group] ?? g.group,
                       actual: g.actual,
                       target: g.targetAmount,
-                      money: _money,
+                      currency: d.currency,
                     ),
                   ),
               ],
@@ -188,7 +207,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
                       backgroundColor: Colors.white10,
-                      child: Text(iconOrFallback(t.category.emoji)),
+                      child: categoryIcon(t.category.emoji, size: 18),
                     ),
                     title: Text(t.category.name),
                     subtitle: t.concept.isNotEmpty ? Text(t.concept) : null,
@@ -206,9 +225,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 class _StatCard extends StatelessWidget {
   final String label;
-  final String value;
+  final double value;
+  final String currency;
   final Color? accent;
-  const _StatCard({required this.label, required this.value, this.accent});
+  const _StatCard({required this.label, required this.value, required this.currency, this.accent});
 
   @override
   Widget build(BuildContext context) {
@@ -220,8 +240,9 @@ class _StatCard extends StatelessWidget {
           children: [
             Text(label, style: const TextStyle(color: Colors.white60, fontSize: 12)),
             const SizedBox(height: 4),
-            Text(
-              value,
+            AnimatedMoney(
+              value: value,
+              currency: currency,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: accent),
             ),
           ],
@@ -235,8 +256,13 @@ class _GroupBar extends StatelessWidget {
   final String label;
   final double actual;
   final double target;
-  final String Function(double) money;
-  const _GroupBar({required this.label, required this.actual, required this.target, required this.money});
+  final String currency;
+  const _GroupBar({
+    required this.label,
+    required this.actual,
+    required this.target,
+    required this.currency,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -249,20 +275,34 @@ class _GroupBar extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-            Text(
-              '${money(actual)} / ${money(target)}',
-              style: TextStyle(color: over ? Colors.redAccent : Colors.white60, fontSize: 12),
+            Row(
+              children: [
+                AnimatedMoney(
+                  value: actual,
+                  currency: currency,
+                  style: TextStyle(color: over ? Colors.redAccent : Colors.white60, fontSize: 12),
+                ),
+                Text(
+                  ' / $currency${NumberFormat('#,##0.00', 'es').format(target)}',
+                  style: TextStyle(color: over ? Colors.redAccent : Colors.white60, fontSize: 12),
+                ),
+              ],
             ),
           ],
         ),
         const SizedBox(height: 6),
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: pct,
-            minHeight: 8,
-            backgroundColor: Colors.white12,
-            valueColor: AlwaysStoppedAnimation(over ? Colors.redAccent : Colors.white),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: pct),
+            duration: const Duration(milliseconds: 700),
+            curve: Curves.easeOutCubic,
+            builder: (context, animatedPct, _) => LinearProgressIndicator(
+              value: animatedPct,
+              minHeight: 8,
+              backgroundColor: Colors.white12,
+              valueColor: AlwaysStoppedAnimation(over ? Colors.redAccent : Colors.white),
+            ),
           ),
         ),
       ],

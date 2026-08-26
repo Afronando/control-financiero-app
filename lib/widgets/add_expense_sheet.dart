@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api_client.dart';
+import '../constants.dart';
 
 class AddExpenseSheet extends StatefulWidget {
   final ApiClient api;
@@ -75,7 +76,19 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
             initialValue: _selected,
             decoration: const InputDecoration(labelText: 'Categoría'),
             items: widget.categories
-                .map((c) => DropdownMenuItem(value: c, child: Text('${c.emoji} ${c.name}')))
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        categoryIcon(c.emoji, size: 16, color: Colors.white70),
+                        const SizedBox(width: 8),
+                        Text(c.name),
+                      ],
+                    ),
+                  ),
+                )
                 .toList(),
             onChanged: (v) => setState(() => _selected = v),
           ),

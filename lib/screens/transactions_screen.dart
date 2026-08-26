@@ -88,11 +88,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ? ListView(
                       children: const [
                         Padding(
-                          padding: EdgeInsets.all(32),
-                          child: Text(
-                            'Aún no registras transacciones este mes.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white60),
+                          padding: EdgeInsets.fromLTRB(32, 96, 32, 32),
+                          child: Column(
+                            children: [
+                              Icon(Icons.receipt_long_outlined, size: 40, color: Colors.white24),
+                              SizedBox(height: 12),
+                              Text(
+                                'Aún no registras transacciones este mes.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white60),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -120,7 +126,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             child: ListTile(
                               leading: CircleAvatar(
                                 backgroundColor: Colors.white10,
-                                child: Text(iconOrFallback(t.category.emoji)),
+                                child: categoryIcon(t.category.emoji, size: 18),
                               ),
                               title: Text(t.category.name),
                               subtitle: Text(
