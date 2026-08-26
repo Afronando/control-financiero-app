@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../api_client.dart';
-import 'main_shell.dart';
+import '../theme_controller.dart';
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   final ApiClient api;
-  const LoginScreen({super.key, required this.api});
+  final ThemeController themeController;
+  const LoginScreen({super.key, required this.api, required this.themeController});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -26,7 +28,9 @@ class _LoginScreenState extends State<LoginScreen> {
       await widget.api.login(_emailController.text.trim(), _passwordController.text);
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => MainShell(api: widget.api)),
+        MaterialPageRoute(
+          builder: (_) => HomeScreen(api: widget.api, themeController: widget.themeController),
+        ),
       );
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -39,6 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -61,10 +66,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Inicia sesión para continuar',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white60),
+                    style: TextStyle(color: muted),
                   ),
                   const SizedBox(height: 32),
                   TextField(
@@ -91,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 12),
-                    Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+                    Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ],
                   const SizedBox(height: 20),
                   ElevatedButton(

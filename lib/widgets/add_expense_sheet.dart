@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api_client.dart';
-import '../constants.dart';
+import 'category_badge.dart';
 
 class AddExpenseSheet extends StatefulWidget {
   final ApiClient api;
@@ -82,7 +82,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        categoryIcon(c.emoji, size: 16, color: Colors.white70),
+                        CategoryBadge(categoryId: c.id, iconValue: c.emoji, size: 26),
                         const SizedBox(width: 8),
                         Text(c.name),
                       ],
@@ -108,7 +108,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
           ),
           if (_error != null) ...[
             const SizedBox(height: 12),
-            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+            Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ],
           const SizedBox(height: 16),
           ElevatedButton(

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../api_client.dart';
-import '../constants.dart';
 import '../widgets/add_expense_sheet.dart';
+import '../widgets/category_badge.dart';
 
 class TransactionsScreen extends StatefulWidget {
   final ApiClient api;
@@ -62,6 +62,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final error = Theme.of(context).colorScheme.error;
     return Scaffold(
       appBar: AppBar(title: const Text('Transacciones')),
       floatingActionButton: FloatingActionButton.extended(
@@ -74,7 +76,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_error!, style: const TextStyle(color: Colors.white60)),
+                  Text(_error!, style: TextStyle(color: muted)),
                   const SizedBox(height: 12),
                   ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
                 ],
@@ -86,17 +88,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
               onRefresh: _load,
               child: _transactions!.isEmpty
                   ? ListView(
-                      children: const [
+                      children: [
                         Padding(
-                          padding: EdgeInsets.fromLTRB(32, 96, 32, 32),
+                          padding: const EdgeInsets.fromLTRB(32, 96, 32, 32),
                           child: Column(
                             children: [
-                              Icon(Icons.receipt_long_outlined, size: 40, color: Colors.white24),
-                              SizedBox(height: 12),
+                              Icon(Icons.receipt_long_outlined, size: 40, color: muted.withValues(alpha: 0.5)),
+                              const SizedBox(height: 12),
                               Text(
                                 'Aún no registras transacciones este mes.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white60),
+                                style: TextStyle(color: muted),
                               ),
                             ],
                           ),
@@ -115,19 +117,16 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                             alignment: Alignment.centerRight,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
                             decoration: BoxDecoration(
-                              color: Colors.redAccent.withValues(alpha: 0.15),
+                              color: error.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                            child: Icon(Icons.delete_outline, color: error),
                           ),
                           onDismissed: (_) => _delete(t),
                           child: Card(
                             margin: const EdgeInsets.only(bottom: 8),
                             child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.white10,
-                                child: categoryIcon(t.category.emoji, size: 18),
-                              ),
+                              leading: CategoryBadge(categoryId: t.category.id, iconValue: t.category.emoji),
                               title: Text(t.category.name),
                               subtitle: Text(
                                 [

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../api_client.dart';
-import '../constants.dart';
 import '../widgets/animated_money.dart';
+import '../widgets/category_badge.dart';
 
 class GoalsScreen extends StatefulWidget {
   final ApiClient api;
@@ -73,6 +73,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return Scaffold(
       appBar: AppBar(title: const Text('Metas')),
       body: _error != null
@@ -80,7 +81,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_error!, style: const TextStyle(color: Colors.white60)),
+                  Text(_error!, style: TextStyle(color: muted)),
                   const SizedBox(height: 12),
                   ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
                 ],
@@ -92,17 +93,17 @@ class _GoalsScreenState extends State<GoalsScreen> {
               onRefresh: _load,
               child: _goals!.isEmpty
                   ? ListView(
-                      children: const [
+                      children: [
                         Padding(
-                          padding: EdgeInsets.fromLTRB(32, 96, 32, 32),
+                          padding: const EdgeInsets.fromLTRB(32, 96, 32, 32),
                           child: Column(
                             children: [
-                              Icon(Icons.flag_outlined, size: 40, color: Colors.white24),
-                              SizedBox(height: 12),
+                              Icon(Icons.flag_outlined, size: 40, color: muted.withValues(alpha: 0.5)),
+                              const SizedBox(height: 12),
                               Text(
                                 'Aún no tienes metas de ahorro.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white60),
+                                style: TextStyle(color: muted),
                               ),
                             ],
                           ),
@@ -115,6 +116,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                       itemBuilder: (context, i) {
                         final g = _goals![i];
                         final pct = (g.progressPct / 100).clamp(0, 1).toDouble();
+                        final trackBg = Theme.of(context).colorScheme.surfaceContainerHighest;
+                        final onSurface = Theme.of(context).colorScheme.onSurface;
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
                           child: Padding(
@@ -128,8 +131,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                     Expanded(
                                       child: Row(
                                         children: [
-                                          categoryIcon(g.emoji, size: 18),
-                                          const SizedBox(width: 8),
+                                          CategoryBadge(categoryId: g.categoryId, iconValue: g.emoji, size: 32),
+                                          const SizedBox(width: 10),
                                           Flexible(
                                             child: Text(
                                               g.name,
@@ -158,11 +161,11 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                       children: [
                                         AnimatedMoney(
                                           value: g.saved,
-                                          style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                          style: TextStyle(color: muted, fontSize: 12),
                                         ),
                                         Text(
                                           ' de ${_money(g.targetAmount)}',
-                                          style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                          style: TextStyle(color: muted, fontSize: 12),
                                         ),
                                       ],
                                     ),
@@ -178,9 +181,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                     builder: (context, animatedPct, _) => LinearProgressIndicator(
                                       value: animatedPct,
                                       minHeight: 8,
-                                      backgroundColor: Colors.white12,
+                                      backgroundColor: trackBg,
                                       valueColor: AlwaysStoppedAnimation(
-                                        g.completed ? Colors.greenAccent : Colors.white,
+                                        g.completed ? Colors.greenAccent : onSurface,
                                       ),
                                     ),
                                   ),
@@ -188,7 +191,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Falta: ${_money(g.remaining)}',
-                                  style: const TextStyle(color: Colors.white60, fontSize: 12),
+                                  style: TextStyle(color: muted, fontSize: 12),
                                 ),
                                 if (g.monthlyNeeded != null && g.monthsLeft != null && !g.completed)
                                   Padding(
@@ -196,7 +199,7 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.08),
+                                        color: trackBg,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(

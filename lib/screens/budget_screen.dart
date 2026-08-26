@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import '../api_client.dart';
 import '../constants.dart';
 import '../widgets/animated_money.dart';
+import '../widgets/category_badge.dart';
 
 class BudgetScreen extends StatefulWidget {
   final ApiClient api;
@@ -89,6 +90,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
     return Scaffold(
       appBar: AppBar(title: const Text('Presupuesto')),
       body: _error != null
@@ -96,7 +98,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_error!, style: const TextStyle(color: Colors.white60)),
+                  Text(_error!, style: TextStyle(color: muted)),
                   const SizedBox(height: 12),
                   ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
                 ],
@@ -109,6 +111,11 @@ class _BudgetScreenState extends State<BudgetScreen> {
   }
 
   Widget _buildGrouped() {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final error = Theme.of(context).colorScheme.error;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final trackBg = Theme.of(context).colorScheme.surfaceContainerHighest;
+
     final groups = <String, List<BudgetCategoryLine>>{};
     for (final l in _lines!) {
       (groups[l.group] ??= []).add(l);
@@ -138,71 +145,73 @@ class _BudgetScreenState extends State<BudgetScreen> {
                         child: InkWell(
                           onTap: () => _editEstimated(line),
                           borderRadius: BorderRadius.circular(8),
-                          child: Column(
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      categoryIcon(line.emoji, size: 16, color: Colors.white70),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        line.name,
-                                        style: const TextStyle(fontWeight: FontWeight.w500),
-                                      ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      AnimatedMoney(
-                                        value: line.actual,
-                                        style: TextStyle(
-                                          color: line.actual > line.estimated && line.estimated > 0
-                                              ? Colors.redAccent
-                                              : Colors.white60,
-                                          fontSize: 12,
+                              CategoryBadge(categoryId: line.categoryId, iconValue: line.emoji, size: 34),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          line.name,
+                                          style: const TextStyle(fontWeight: FontWeight.w500),
                                         ),
-                                      ),
-                                      Text(
-                                        ' / ${_money(line.estimated)}',
-                                        style: TextStyle(
-                                          color: line.actual > line.estimated && line.estimated > 0
-                                              ? Colors.redAccent
-                                              : Colors.white60,
-                                          fontSize: 12,
+                                        Row(
+                                          children: [
+                                            AnimatedMoney(
+                                              value: line.actual,
+                                              style: TextStyle(
+                                                color: line.actual > line.estimated && line.estimated > 0
+                                                    ? error
+                                                    : muted,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            Text(
+                                              ' / ${_money(line.estimated)}',
+                                              style: TextStyle(
+                                                color: line.actual > line.estimated && line.estimated > 0
+                                                    ? error
+                                                    : muted,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Icon(Icons.edit, size: 14, color: muted.withValues(alpha: 0.6)),
+                                          ],
                                         ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      const Icon(Icons.edit, size: 14, color: Colors.white38),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: TweenAnimationBuilder<double>(
-                                  tween: Tween(
-                                    begin: 0,
-                                    end: line.estimated > 0
-                                        ? (line.actual / line.estimated).clamp(0, 1).toDouble()
-                                        : 0,
-                                  ),
-                                  duration: const Duration(milliseconds: 700),
-                                  curve: Curves.easeOutCubic,
-                                  builder: (context, animatedPct, _) => LinearProgressIndicator(
-                                    value: animatedPct,
-                                    minHeight: 6,
-                                    backgroundColor: Colors.white12,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      line.actual > line.estimated && line.estimated > 0
-                                          ? Colors.redAccent
-                                          : Colors.white,
+                                      ],
                                     ),
-                                  ),
+                                    const SizedBox(height: 6),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: TweenAnimationBuilder<double>(
+                                        tween: Tween(
+                                          begin: 0,
+                                          end: line.estimated > 0
+                                              ? (line.actual / line.estimated).clamp(0, 1).toDouble()
+                                              : 0,
+                                        ),
+                                        duration: const Duration(milliseconds: 700),
+                                        curve: Curves.easeOutCubic,
+                                        builder: (context, animatedPct, _) => LinearProgressIndicator(
+                                          value: animatedPct,
+                                          minHeight: 6,
+                                          backgroundColor: trackBg,
+                                          valueColor: AlwaysStoppedAnimation(
+                                            line.actual > line.estimated && line.estimated > 0
+                                                ? error
+                                                : onSurface,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
