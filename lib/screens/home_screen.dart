@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../api_client.dart';
 import '../constants.dart';
 import '../theme_controller.dart';
@@ -7,6 +8,7 @@ import '../widgets/add_expense_sheet.dart';
 import '../widgets/add_income_sheet.dart';
 import '../widgets/animated_money.dart';
 import '../widgets/category_badge.dart';
+import '../widgets/slide_fade_route.dart';
 import 'annual_screen.dart';
 import 'budget_screen.dart';
 import 'debts_screen.dart';
@@ -16,8 +18,18 @@ import 'settings_screen.dart';
 import 'transactions_screen.dart';
 
 const _monthNames = [
-  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
 ];
 
 // Single main screen, no bottom tab bar - Transacciones/Presupuesto/Metas/
@@ -26,7 +38,11 @@ const _monthNames = [
 class HomeScreen extends StatefulWidget {
   final ApiClient api;
   final ThemeController themeController;
-  const HomeScreen({super.key, required this.api, required this.themeController});
+  const HomeScreen({
+    super.key,
+    required this.api,
+    required this.themeController,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -95,14 +111,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => LoginScreen(api: widget.api, themeController: widget.themeController),
+        builder: (_) => LoginScreen(
+          api: widget.api,
+          themeController: widget.themeController,
+        ),
       ),
       (route) => false,
     );
   }
 
   Future<void> _push(Widget screen) async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+    await Navigator.of(context).push(SlideFadeRoute(page: screen));
     _load();
   }
 
@@ -142,17 +161,36 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            _TopIconButton(icon: Icons.credit_card_outlined, onTap: () => _push(DebtsScreen(api: widget.api))),
+            _TopIconButton(
+              icon: Icons.credit_card_outlined,
+              onTap: () => _push(DebtsScreen(api: widget.api)),
+            ),
             const SizedBox(width: 8),
-            _TopIconButton(icon: Icons.bar_chart_outlined, onTap: () => _push(AnnualScreen(api: widget.api))),
+            _TopIconButton(
+              icon: Icons.bar_chart_outlined,
+              onTap: () => _push(AnnualScreen(api: widget.api)),
+            ),
             const SizedBox(width: 8),
-            _TopIconButton(icon: Icons.pie_chart_outline, onTap: () => _push(BudgetScreen(api: widget.api, year: _year, month: _month))),
+            _TopIconButton(
+              icon: Icons.pie_chart_outline,
+              onTap: () => _push(
+                BudgetScreen(api: widget.api, year: _year, month: _month),
+              ),
+            ),
             const SizedBox(width: 8),
-            _TopIconButton(icon: Icons.flag_outlined, onTap: () => _push(GoalsScreen(api: widget.api))),
+            _TopIconButton(
+              icon: Icons.flag_outlined,
+              onTap: () => _push(GoalsScreen(api: widget.api)),
+            ),
             const SizedBox(width: 8),
             _TopIconButton(
               icon: Icons.settings_outlined,
-              onTap: () => _push(SettingsScreen(api: widget.api, themeController: widget.themeController)),
+              onTap: () => _push(
+                SettingsScreen(
+                  api: widget.api,
+                  themeController: widget.themeController,
+                ),
+              ),
             ),
           ],
         ),
@@ -160,16 +198,26 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeMonth(-1)),
+            IconButton(
+              icon: const Icon(Icons.chevron_left),
+              onPressed: () => _changeMonth(-1),
+            ),
             SizedBox(
               width: 150,
               child: Text(
                 '${_monthNames[_month - 1]} $_year',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: muted, fontSize: 13, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: muted,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-            IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeMonth(1)),
+            IconButton(
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () => _changeMonth(1),
+            ),
           ],
         ),
         Center(
@@ -186,7 +234,9 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontSize: 44,
               fontWeight: FontWeight.w800,
-              color: d.disponible < 0 ? Theme.of(context).colorScheme.error : null,
+              color: d.disponible < 0
+                  ? Theme.of(context).colorScheme.error
+                  : null,
             ),
           ),
         ),
@@ -196,9 +246,21 @@ class _HomeScreenState extends State<HomeScreen> {
             alignment: WrapAlignment.center,
             spacing: 12,
             children: [
-              _MiniStat(label: 'Ingresos', value: d.income, currency: d.currency),
-              _MiniStat(label: 'Gastos', value: d.totalExpenses, currency: d.currency),
-              _MiniStat(label: 'Deudas', value: d.totalDebt, currency: d.currency),
+              _MiniStat(
+                label: 'Ingresos',
+                value: d.income,
+                currency: d.currency,
+              ),
+              _MiniStat(
+                label: 'Gastos',
+                value: d.totalExpenses,
+                currency: d.currency,
+              ),
+              _MiniStat(
+                label: 'Deudas',
+                value: d.totalDebt,
+                currency: d.currency,
+              ),
             ],
           ),
         ),
@@ -209,9 +271,14 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Presupuesto 50/30/20', style: TextStyle(fontWeight: FontWeight.w700)),
+                const Text(
+                  'Presupuesto 50/30/20',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(height: 14),
-                for (final g in d.groups.where((g) => g.group != 'deuda' || g.actual > 0))
+                for (final g in d.groups.where(
+                  (g) => g.group != 'deuda' || g.actual > 0,
+                ))
                   Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: _GroupBar(
@@ -229,9 +296,14 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Transacciones', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const Text(
+              'Transacciones',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+            ),
             TextButton(
-              onPressed: () => _push(TransactionsScreen(api: widget.api, year: _year, month: _month)),
+              onPressed: () => _push(
+                TransactionsScreen(api: widget.api, year: _year, month: _month),
+              ),
               child: const Text('Ver todas'),
             ),
           ],
@@ -248,13 +320,19 @@ class _HomeScreenState extends State<HomeScreen> {
         for (final date in dates) ...[
           Padding(
             padding: const EdgeInsets.only(top: 12, bottom: 6),
-            child: Text(_formatDateHeader(date), style: TextStyle(fontSize: 12, color: muted)),
+            child: Text(
+              _formatDateHeader(date),
+              style: TextStyle(fontSize: 12, color: muted),
+            ),
           ),
           for (final t in grouped[date]!)
             Card(
               margin: const EdgeInsets.only(bottom: 8),
               child: ListTile(
-                leading: CategoryBadge(categoryId: t.category.id, iconValue: t.category.emoji),
+                leading: CategoryBadge(
+                  categoryId: t.category.id,
+                  iconValue: t.category.emoji,
+                ),
                 title: Text(t.category.name),
                 subtitle: t.concept.isNotEmpty ? Text(t.concept) : null,
                 trailing: Text(
@@ -273,7 +351,18 @@ class _HomeScreenState extends State<HomeScreen> {
       final date = DateTime.parse(iso);
       const days = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
       const months = [
-        'ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic',
+        'ene',
+        'feb',
+        'mar',
+        'abr',
+        'may',
+        'jun',
+        'jul',
+        'ago',
+        'sep',
+        'oct',
+        'nov',
+        'dic',
       ];
       return '${days[date.weekday - 1]}, ${date.day} ${months[date.month - 1]}';
     } catch (_) {
@@ -295,7 +384,10 @@ class _TopIconButton extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: Padding(padding: const EdgeInsets.all(9), child: Icon(icon, size: 18)),
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Icon(icon, size: 18),
+        ),
       ),
     );
   }
@@ -305,7 +397,11 @@ class _MiniStat extends StatelessWidget {
   final String label;
   final double value;
   final String currency;
-  const _MiniStat({required this.label, required this.value, required this.currency});
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.currency,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +410,15 @@ class _MiniStat extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text('$label ', style: TextStyle(color: muted, fontSize: 12)),
-        AnimatedMoney(value: value, currency: currency, style: TextStyle(color: muted, fontSize: 12, fontWeight: FontWeight.w600)),
+        AnimatedMoney(
+          value: value,
+          currency: currency,
+          style: TextStyle(
+            color: muted,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
@@ -325,7 +429,12 @@ class _GroupBar extends StatelessWidget {
   final double actual;
   final double target;
   final String currency;
-  const _GroupBar({required this.label, required this.actual, required this.target, required this.currency});
+  const _GroupBar({
+    required this.label,
+    required this.actual,
+    required this.target,
+    required this.currency,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -345,10 +454,20 @@ class _GroupBar extends StatelessWidget {
             Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
             Row(
               children: [
-                AnimatedMoney(value: actual, currency: currency, style: TextStyle(color: over ? errorColor : muted, fontSize: 12)),
+                AnimatedMoney(
+                  value: actual,
+                  currency: currency,
+                  style: TextStyle(
+                    color: over ? errorColor : muted,
+                    fontSize: 12,
+                  ),
+                ),
                 Text(
                   ' / $currency${NumberFormat('#,##0.00', 'es').format(target)}',
-                  style: TextStyle(color: over ? errorColor : muted, fontSize: 12),
+                  style: TextStyle(
+                    color: over ? errorColor : muted,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -417,7 +536,11 @@ class _BottomActionBarState extends State<_BottomActionBar> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (_) => AddIncomeSheet(api: widget.api, year: widget.year, month: widget.month),
+      builder: (_) => AddIncomeSheet(
+        api: widget.api,
+        year: widget.year,
+        month: widget.month,
+      ),
     );
     if (result == true) widget.onDone();
   }
@@ -461,7 +584,12 @@ class _ErrorView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(message, style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Text(
+            message,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 12),
           ElevatedButton(onPressed: onRetry, child: const Text('Reintentar')),
         ],

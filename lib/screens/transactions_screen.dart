@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../api_client.dart';
 import '../widgets/add_expense_sheet.dart';
 import '../widgets/category_badge.dart';
+import '../widgets/fade_slide_in.dart';
 
 class TransactionsScreen extends StatefulWidget {
   final ApiClient api;
   final int? year;
   final int? month;
-  const TransactionsScreen({super.key, required this.api, this.year, this.month});
+  const TransactionsScreen({
+    super.key,
+    required this.api,
+    this.year,
+    this.month,
+  });
 
   @override
   State<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -88,7 +95,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 children: [
                   Text(_error!, style: TextStyle(color: muted)),
                   const SizedBox(height: 12),
-                  ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
+                  ElevatedButton(
+                    onPressed: _load,
+                    child: const Text('Reintentar'),
+                  ),
                 ],
               ),
             )
@@ -103,7 +113,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           padding: const EdgeInsets.fromLTRB(32, 96, 32, 32),
                           child: Column(
                             children: [
-                              Icon(Icons.receipt_long_outlined, size: 40, color: muted.withValues(alpha: 0.5)),
+                              Icon(
+                                Icons.receipt_long_outlined,
+                                size: 40,
+                                color: muted.withValues(alpha: 0.5),
+                              ),
                               const SizedBox(height: 12),
                               Text(
                                 'Aún no registras transacciones este mes.',
@@ -120,34 +134,46 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                       itemCount: _transactions!.length,
                       itemBuilder: (context, i) {
                         final t = _transactions![i];
-                        return Dismissible(
-                          key: ValueKey(t.id),
-                          direction: DismissDirection.endToStart,
-                          background: Container(
-                            alignment: Alignment.centerRight,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            decoration: BoxDecoration(
-                              color: error.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(Icons.delete_outline, color: error),
-                          ),
-                          onDismissed: (_) => _delete(t),
-                          child: Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: CategoryBadge(categoryId: t.category.id, iconValue: t.category.emoji),
-                              title: Text(t.category.name),
-                              subtitle: Text(
-                                [
-                                  t.date,
-                                  if (t.concept.isNotEmpty) t.concept,
-                                  t.paymentMethod == 'credito' ? 'Crédito' : 'Débito',
-                                ].join(' · '),
+                        return FadeSlideIn(
+                          index: i,
+                          child: Dismissible(
+                            key: ValueKey(t.id),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
                               ),
-                              trailing: Text(
-                                _money(t.amount),
-                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              decoration: BoxDecoration(
+                                color: error.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.delete_outline, color: error),
+                            ),
+                            onDismissed: (_) => _delete(t),
+                            child: Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: CategoryBadge(
+                                  categoryId: t.category.id,
+                                  iconValue: t.category.emoji,
+                                ),
+                                title: Text(t.category.name),
+                                subtitle: Text(
+                                  [
+                                    t.date,
+                                    if (t.concept.isNotEmpty) t.concept,
+                                    t.paymentMethod == 'credito'
+                                        ? 'Crédito'
+                                        : 'Débito',
+                                  ].join(' · '),
+                                ),
+                                trailing: Text(
+                                  _money(t.amount),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                             ),
                           ),

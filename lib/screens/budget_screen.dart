@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
 import '../api_client.dart';
 import '../constants.dart';
 import '../widgets/animated_money.dart';
 import '../widgets/category_badge.dart';
+import '../widgets/fade_slide_in.dart';
 
 class BudgetScreen extends StatefulWidget {
   final ApiClient api;
@@ -28,7 +30,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Future<void> _load() async {
     setState(() => _error = null);
     try {
-      final lines = await widget.api.getBudget(year: widget.year, month: widget.month);
+      final lines = await widget.api.getBudget(
+        year: widget.year,
+        month: widget.month,
+      );
       setState(() => _lines = lines);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -40,7 +45,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
   String _money(double v) => '\$${NumberFormat('#,##0.00', 'es').format(v)}';
 
   Future<void> _editEstimated(BudgetCategoryLine line) async {
-    final controller = TextEditingController(text: line.estimated.toStringAsFixed(2));
+    final controller = TextEditingController(
+      text: line.estimated.toStringAsFixed(2),
+    );
     final result = await showDialog<double>(
       context: context,
       builder: (context) => AlertDialog(
@@ -59,7 +66,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
           decoration: const InputDecoration(labelText: 'Presupuesto mensual'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
           TextButton(
             onPressed: () {
               final v = double.tryParse(controller.text.replaceAll(',', '.'));
@@ -84,7 +94,12 @@ class _BudgetScreenState extends State<BudgetScreen> {
       );
     });
     try {
-      await widget.api.setBudgetEstimated(line.categoryId, result, year: widget.year, month: widget.month);
+      await widget.api.setBudgetEstimated(
+        line.categoryId,
+        result,
+        year: widget.year,
+        month: widget.month,
+      );
     } on ApiException {
       _load();
     }
@@ -102,7 +117,10 @@ class _BudgetScreenState extends State<BudgetScreen> {
                 children: [
                   Text(_error!, style: TextStyle(color: muted)),
                   const SizedBox(height: 12),
-                  ElevatedButton(onPressed: _load, child: const Text('Reintentar')),
+                  ElevatedButton(
+                    onPressed: _load,
+                    child: const Text('Reintentar'),
+                  ),
                 ],
               ),
             )
@@ -123,6 +141,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       (groups[l.group] ??= []).add(l);
     }
     const order = ['necesidad', 'deseo', 'futuro', 'deuda'];
+    var globalIndex = 0;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -130,100 +149,119 @@ class _BudgetScreenState extends State<BudgetScreen> {
         for (final g in order)
           if (groups[g] != null && groups[g]!.isNotEmpty) ...[
             Padding(
-              padding: const EdgeInsets.only(bottom: 8, top: 8),
+              padding: const EdgeInsets.only(bottom: 10, top: 8),
               child: Text(
                 groupLabels[g] ?? g,
-                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
               ),
             ),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    for (final line in groups[g]!)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: InkWell(
-                          onTap: () => _editEstimated(line),
-                          borderRadius: BorderRadius.circular(8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              CategoryBadge(categoryId: line.categoryId, iconValue: line.emoji, size: 34),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+            for (final line in groups[g]!)
+              FadeSlideIn(
+                index: globalIndex++,
+                child: Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: InkWell(
+                    onTap: () => _editEstimated(line),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CategoryBadge(
+                            categoryId: line.categoryId,
+                            iconValue: line.emoji,
+                            size: 36,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
+                                    Text(
+                                      line.name,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        Text(
-                                          line.name,
-                                          style: const TextStyle(fontWeight: FontWeight.w500),
+                                        AnimatedMoney(
+                                          value: line.actual,
+                                          style: TextStyle(
+                                            color:
+                                                line.actual > line.estimated &&
+                                                    line.estimated > 0
+                                                ? error
+                                                : muted,
+                                            fontSize: 12,
+                                          ),
                                         ),
-                                        Row(
-                                          children: [
-                                            AnimatedMoney(
-                                              value: line.actual,
-                                              style: TextStyle(
-                                                color: line.actual > line.estimated && line.estimated > 0
-                                                    ? error
-                                                    : muted,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            Text(
-                                              ' / ${_money(line.estimated)}',
-                                              style: TextStyle(
-                                                color: line.actual > line.estimated && line.estimated > 0
-                                                    ? error
-                                                    : muted,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 4),
-                                            Icon(Icons.edit, size: 14, color: muted.withValues(alpha: 0.6)),
-                                          ],
+                                        Text(
+                                          ' / ${_money(line.estimated)}',
+                                          style: TextStyle(
+                                            color:
+                                                line.actual > line.estimated &&
+                                                    line.estimated > 0
+                                                ? error
+                                                : muted,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.edit,
+                                          size: 14,
+                                          color: muted.withValues(alpha: 0.6),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 6),
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: TweenAnimationBuilder<double>(
-                                        tween: Tween(
-                                          begin: 0,
-                                          end: line.estimated > 0
-                                              ? (line.actual / line.estimated).clamp(0, 1).toDouble()
-                                              : 0,
-                                        ),
-                                        duration: const Duration(milliseconds: 700),
-                                        curve: Curves.easeOutCubic,
-                                        builder: (context, animatedPct, _) => LinearProgressIndicator(
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween(
+                                      begin: 0,
+                                      end: line.estimated > 0
+                                          ? (line.actual / line.estimated)
+                                                .clamp(0, 1)
+                                                .toDouble()
+                                          : 0,
+                                    ),
+                                    duration: const Duration(milliseconds: 700),
+                                    curve: Curves.easeOutCubic,
+                                    builder: (context, animatedPct, _) =>
+                                        LinearProgressIndicator(
                                           value: animatedPct,
                                           minHeight: 6,
                                           backgroundColor: trackBg,
                                           valueColor: AlwaysStoppedAnimation(
-                                            line.actual > line.estimated && line.estimated > 0
+                                            line.actual > line.estimated &&
+                                                    line.estimated > 0
                                                 ? error
                                                 : onSurface,
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
-                  ],
+                    ),
+                  ),
                 ),
               ),
-            ),
           ],
         const SizedBox(height: 60),
       ],
