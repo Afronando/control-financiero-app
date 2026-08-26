@@ -1,0 +1,75 @@
+workflows:
+  # Builds an installable Android APK on every push. Works today - no Apple
+  # account needed. Once connected in the Codemagic dashboard this workflow
+  # runs on its own; the resulting APK can be downloaded from the build page
+  # or emailed automatically (see `publishing` below).
+  android-workflow:
+    name: Android build
+    max_build_duration: 30
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get Flutter packages
+        script: flutter packages pub get
+      - name: Build release APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/**/*.apk
+    publishing:
+      email:
+        recipients:
+          - fernandoespinosa135@gmail.com
+        notify:
+          success: true
+          failure: true
+
+  # iOS build - NOT runnable yet. Requires, set up once in the Codemagic
+  # dashboard (Teams > Integrations), before this workflow will succeed:
+  #   1. An Apple Developer Program membership ($99/yr).
+  #   2. An App Store Connect API key generated from your Apple account,
+  #      added under Codemagic > Team settings > Integrations > Apple
+  #      Developer Portal, then referenced below as `app_store_connect`.
+  #   3. The app registered in App Store Connect with bundle id
+  #      com.controlfinanciero.controlFinancieroApp (already set in the
+  #      Xcode project - nothing to change there).
+  # Until all three exist, leave this workflow disabled/unused in Codemagic;
+  # triggering it early will just fail on signing.
+  ios-workflow:
+    name: iOS build
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: codemagic_appstore_key # name this integration exactly this in Codemagic's dashboard, or update to match
+    environment:
+      flutter: stable
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.controlfinanciero.controlFinancieroApp
+      vars:
+        BUNDLE_ID: "com.controlfinanciero.controlFinancieroApp"
+    scripts:
+      - name: Get Flutter packages
+        script: flutter packages pub get
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
+      - name: Build ipa for App Store
+        script: flutter build ipa --release --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+      email:
+        recipients:
+          - fernandoespinosa135@gmail.com
+        notify:
+          success: true
+          failure: true
