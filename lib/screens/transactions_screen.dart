@@ -6,7 +6,9 @@ import '../widgets/category_badge.dart';
 
 class TransactionsScreen extends StatefulWidget {
   final ApiClient api;
-  const TransactionsScreen({super.key, required this.api});
+  final int? year;
+  final int? month;
+  const TransactionsScreen({super.key, required this.api, this.year, this.month});
 
   @override
   State<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -26,7 +28,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   Future<void> _load() async {
     setState(() => _error = null);
     try {
-      final results = await Future.wait([widget.api.getTransactions(), widget.api.getCategories()]);
+      final results = await Future.wait([
+        widget.api.getTransactions(year: widget.year, month: widget.month),
+        widget.api.getCategories(),
+      ]);
       setState(() {
         _transactions = results[0] as List<TransactionEntry>;
         _categories = results[1] as List<CategoryOption>;
@@ -53,7 +58,12 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (_) => AddExpenseSheet(api: widget.api, categories: _categories),
+      builder: (_) => AddExpenseSheet(
+        api: widget.api,
+        categories: _categories,
+        year: widget.year,
+        month: widget.month,
+      ),
     );
     if (result == true) _load();
   }

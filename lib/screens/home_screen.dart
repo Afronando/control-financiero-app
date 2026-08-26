@@ -4,17 +4,25 @@ import '../api_client.dart';
 import '../constants.dart';
 import '../theme_controller.dart';
 import '../widgets/add_expense_sheet.dart';
+import '../widgets/add_income_sheet.dart';
 import '../widgets/animated_money.dart';
 import '../widgets/category_badge.dart';
+import 'annual_screen.dart';
 import 'budget_screen.dart';
+import 'debts_screen.dart';
 import 'goals_screen.dart';
 import 'login_screen.dart';
 import 'settings_screen.dart';
 import 'transactions_screen.dart';
 
-// Single main screen, no bottom tab bar - Transacciones/Presupuesto/Metas
-// are reached from the icon row up top, matching the reference app's
-// structure (one dominant screen + a floating add bar, not a tab set).
+const _monthNames = [
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre',
+];
+
+// Single main screen, no bottom tab bar - Transacciones/Presupuesto/Metas/
+// Deudas/Anual are reached from the icon row up top, matching the reference
+// app's structure (one dominant screen + a floating add bar, not a tab set).
 class HomeScreen extends StatefulWidget {
   final ApiClient api;
   final ThemeController themeController;
@@ -29,10 +37,15 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CategoryOption> _categories = [];
   bool _loading = true;
   String? _error;
+  late int _year;
+  late int _month;
 
   @override
   void initState() {
     super.initState();
+    final now = DateTime.now();
+    _year = now.year;
+    _month = now.month;
     _load();
   }
 
@@ -42,7 +55,10 @@ class _HomeScreenState extends State<HomeScreen> {
       _error = null;
     });
     try {
-      final results = await Future.wait([widget.api.getDashboard(), widget.api.getCategories()]);
+      final results = await Future.wait([
+        widget.api.getDashboard(year: _year, month: _month),
+        widget.api.getCategories(),
+      ]);
       setState(() {
         _data = results[0] as DashboardData;
         _categories = results[1] as List<CategoryOption>;
@@ -58,6 +74,20 @@ class _HomeScreenState extends State<HomeScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _changeMonth(int delta) {
+    setState(() {
+      _month += delta;
+      if (_month > 12) {
+        _month = 1;
+        _year++;
+      } else if (_month < 1) {
+        _month = 12;
+        _year--;
+      }
+    });
+    _load();
   }
 
   Future<void> _goToLogin() async {
@@ -87,7 +117,13 @@ class _HomeScreenState extends State<HomeScreen> {
             : RefreshIndicator(onRefresh: _load, child: _buildBody()),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: _BottomActionBar(api: widget.api, categories: _categories, onDone: _load),
+      floatingActionButton: _BottomActionBar(
+        api: widget.api,
+        categories: _categories,
+        onDone: _load,
+        year: _year,
+        month: _month,
+      ),
     );
   }
 
@@ -98,6 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
       (grouped[t.date] ??= []).add(t);
     }
     final dates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
@@ -105,7 +142,11 @@ class _HomeScreenState extends State<HomeScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            _TopIconButton(icon: Icons.pie_chart_outline, onTap: () => _push(BudgetScreen(api: widget.api))),
+            _TopIconButton(icon: Icons.credit_card_outlined, onTap: () => _push(DebtsScreen(api: widget.api))),
+            const SizedBox(width: 8),
+            _TopIconButton(icon: Icons.bar_chart_outlined, onTap: () => _push(AnnualScreen(api: widget.api))),
+            const SizedBox(width: 8),
+            _TopIconButton(icon: Icons.pie_chart_outline, onTap: () => _push(BudgetScreen(api: widget.api, year: _year, month: _month))),
             const SizedBox(width: 8),
             _TopIconButton(icon: Icons.flag_outlined, onTap: () => _push(GoalsScreen(api: widget.api))),
             const SizedBox(width: 8),
@@ -115,11 +156,26 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _changeMonth(-1)),
+            SizedBox(
+              width: 150,
+              child: Text(
+                '${_monthNames[_month - 1]} $_year',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: muted, fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ),
+            IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _changeMonth(1)),
+          ],
+        ),
         Center(
           child: Text(
             'Disponible este mes',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13),
+            style: TextStyle(color: muted, fontSize: 13),
           ),
         ),
         const SizedBox(height: 4),
@@ -175,7 +231,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             const Text('Transacciones', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
             TextButton(
-              onPressed: () => _push(TransactionsScreen(api: widget.api)),
+              onPressed: () => _push(TransactionsScreen(api: widget.api, year: _year, month: _month)),
               child: const Text('Ver todas'),
             ),
           ],
@@ -186,19 +242,13 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               'Aún no registras transacciones este mes.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(color: muted),
             ),
           ),
         for (final date in dates) ...[
           Padding(
             padding: const EdgeInsets.only(top: 12, bottom: 6),
-            child: Text(
-              _formatDateHeader(date),
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
+            child: Text(_formatDateHeader(date), style: TextStyle(fontSize: 12, color: muted)),
           ),
           for (final t in grouped[date]!)
             Card(
@@ -245,7 +295,7 @@ class _TopIconButton extends StatelessWidget {
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
-        child: Padding(padding: const EdgeInsets.all(10), child: Icon(icon, size: 20)),
+        child: Padding(padding: const EdgeInsets.all(9), child: Icon(icon, size: 18)),
       ),
     );
   }
@@ -331,7 +381,15 @@ class _BottomActionBar extends StatefulWidget {
   final ApiClient api;
   final List<CategoryOption> categories;
   final VoidCallback onDone;
-  const _BottomActionBar({required this.api, required this.categories, required this.onDone});
+  final int year;
+  final int month;
+  const _BottomActionBar({
+    required this.api,
+    required this.categories,
+    required this.onDone,
+    required this.year,
+    required this.month,
+  });
 
   @override
   State<_BottomActionBar> createState() => _BottomActionBarState();
@@ -344,7 +402,22 @@ class _BottomActionBarState extends State<_BottomActionBar> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
-      builder: (_) => AddExpenseSheet(api: widget.api, categories: widget.categories),
+      builder: (_) => AddExpenseSheet(
+        api: widget.api,
+        categories: widget.categories,
+        year: widget.year,
+        month: widget.month,
+      ),
+    );
+    if (result == true) widget.onDone();
+  }
+
+  Future<void> _addIncome() async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      builder: (_) => AddIncomeSheet(api: widget.api, year: widget.year, month: widget.month),
     );
     if (result == true) widget.onDone();
   }
@@ -356,11 +429,21 @@ class _BottomActionBarState extends State<_BottomActionBar> {
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
+          heroTag: 'addIncome',
+          backgroundColor: scheme.surface,
+          foregroundColor: scheme.onSurface,
+          elevation: 1,
+          onPressed: _addIncome,
+          child: const Icon(Icons.arrow_downward),
+        ),
+        const SizedBox(width: 12),
+        FloatingActionButton.extended(
           heroTag: 'addExpense',
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
           onPressed: _addExpense,
-          child: const Icon(Icons.add),
+          icon: const Icon(Icons.add),
+          label: const Text('Gasto'),
         ),
       ],
     );

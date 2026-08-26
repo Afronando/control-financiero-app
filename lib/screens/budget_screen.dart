@@ -7,7 +7,9 @@ import '../widgets/category_badge.dart';
 
 class BudgetScreen extends StatefulWidget {
   final ApiClient api;
-  const BudgetScreen({super.key, required this.api});
+  final int? year;
+  final int? month;
+  const BudgetScreen({super.key, required this.api, this.year, this.month});
 
   @override
   State<BudgetScreen> createState() => _BudgetScreenState();
@@ -26,7 +28,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
   Future<void> _load() async {
     setState(() => _error = null);
     try {
-      final lines = await widget.api.getBudget();
+      final lines = await widget.api.getBudget(year: widget.year, month: widget.month);
       setState(() => _lines = lines);
     } on ApiException catch (e) {
       setState(() => _error = e.message);
@@ -82,7 +84,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
       );
     });
     try {
-      await widget.api.setBudgetEstimated(line.categoryId, result);
+      await widget.api.setBudgetEstimated(line.categoryId, result, year: widget.year, month: widget.month);
     } on ApiException {
       _load();
     }

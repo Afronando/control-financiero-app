@@ -5,7 +5,9 @@ import 'category_badge.dart';
 class AddExpenseSheet extends StatefulWidget {
   final ApiClient api;
   final List<CategoryOption> categories;
-  const AddExpenseSheet({super.key, required this.api, required this.categories});
+  final int? year;
+  final int? month;
+  const AddExpenseSheet({super.key, required this.api, required this.categories, this.year, this.month});
 
   @override
   State<AddExpenseSheet> createState() => _AddExpenseSheetState();
@@ -25,6 +27,20 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
     _selected = widget.categories.first;
   }
 
+  // If the user is browsing a past/future month on Home, keep the expense in
+  // that month (same day-of-month as today, clamped to that month's length)
+  // instead of silently recording it against the real current month.
+  String? _dateForBrowsedMonth() {
+    if (widget.year == null || widget.month == null) return null;
+    final now = DateTime.now();
+    final daysInMonth = DateTime(widget.year!, widget.month! + 1, 0).day;
+    final day = now.day > daysInMonth ? daysInMonth : now.day;
+    final y = widget.year!.toString().padLeft(4, '0');
+    final m = widget.month!.toString().padLeft(2, '0');
+    final d = day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
   Future<void> _submit() async {
     final amount = double.tryParse(_amountController.text.replaceAll(',', '.'));
     if (amount == null || amount <= 0 || _selected == null) {
@@ -41,6 +57,7 @@ class _AddExpenseSheetState extends State<AddExpenseSheet> {
         amount: amount,
         concept: _conceptController.text.trim(),
         paymentMethod: _paymentMethod,
+        date: _dateForBrowsedMonth(),
       );
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (e) {
