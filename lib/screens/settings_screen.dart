@@ -390,6 +390,51 @@ class _AccountCardState extends State<_AccountCard> {
     }
   }
 
+  Future<void> _editAvgIncome() async {
+    final controller = TextEditingController(text: widget.account.avgMonthlyIncome.toStringAsFixed(2));
+    final value = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Ingreso promedio mensual'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Monto'),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Se usa como estimado mientras no registres ingresos reales este mes.',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 12),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () {
+              final v = double.tryParse(controller.text.replaceAll(',', '.'));
+              Navigator.pop(context, v);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (value == null || value < 0) return;
+    try {
+      await widget.api.updateAccount(avgMonthlyIncome: value);
+      widget.onUpdated();
+      if (mounted) AppToast.success(context, 'Ingreso promedio actualizado');
+    } on ApiException catch (e) {
+      if (mounted) AppToast.error(context, e.message);
+    }
+  }
+
   Future<void> _changePassword() async {
     final currentController = TextEditingController();
     final newController = TextEditingController();
@@ -456,6 +501,14 @@ class _AccountCardState extends State<_AccountCard> {
             subtitle: Text(widget.account.email),
             trailing: const Icon(Icons.edit, size: 18),
             onTap: _editName,
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.payments_outlined),
+            title: const Text('Ingreso promedio mensual'),
+            subtitle: Text('${widget.account.currency}${widget.account.avgMonthlyIncome.toStringAsFixed(2)}'),
+            trailing: const Icon(Icons.edit, size: 18),
+            onTap: _editAvgIncome,
           ),
           const Divider(height: 1),
           ListTile(

@@ -64,6 +64,9 @@ const Map<String, IconData> _lucideToMaterial = {
   'Banknote': Icons.attach_money,
 };
 
+// The known icon names, for building an icon picker grid.
+List<String> get lucideIconNames => _lucideToMaterial.keys.toList();
+
 // Renders a category's icon/emoji field as: a Material icon when it's one
 // of the web app's known Lucide icon names, the literal character(s) when
 // it looks like a real emoji, or a generic fallback tag icon otherwise.

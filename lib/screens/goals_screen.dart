@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../api_client.dart';
 import '../widgets/animated_money.dart';
 import '../widgets/category_badge.dart';
 import '../widgets/fade_slide_in.dart';
 import '../widgets/glass.dart';
+
+const _publicGoalBaseUrl = 'https://control-financiero-lyart-xi.vercel.app/m';
 
 class GoalsScreen extends StatefulWidget {
   final ApiClient api;
@@ -71,6 +74,36 @@ class _GoalsScreenState extends State<GoalsScreen> {
       await widget.api.addGoalContribution(goal.categoryId, amount);
       _load();
       if (mounted) AppToast.success(context, 'Aporte agregado');
+    } on ApiException catch (e) {
+      if (mounted) AppToast.error(context, e.message);
+    }
+  }
+
+  Future<void> _share(GoalEntry goal) async {
+    try {
+      String token = goal.shareToken ?? await widget.api.enableGoalSharing(goal.categoryId);
+      if (!mounted) return;
+      final action = await showDialog<String>(
+        context: context,
+        builder: (_) => _ShareGoalDialog(name: goal.name, url: '$_publicGoalBaseUrl/$token'),
+      );
+      if (action == 'disable') {
+        await widget.api.disableGoalSharing(goal.categoryId);
+        _load();
+        if (mounted) AppToast.success(context, 'Enlace desactivado');
+      } else {
+        _load();
+      }
+    } on ApiException catch (e) {
+      if (mounted) AppToast.error(context, e.message);
+    }
+  }
+
+  Future<void> _showHistory(GoalEntry goal) async {
+    try {
+      final contributions = await widget.api.getGoalContributions(goal.categoryId);
+      if (!mounted) return;
+      showDialog(context: context, builder: (_) => _HistoryDialog(name: goal.name, contributions: contributions, money: _money));
     } on ApiException catch (e) {
       if (mounted) AppToast.error(context, e.message);
     }
@@ -166,6 +199,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
                                               ],
                                             ),
                                           ),
+                                          IconButton(
+                                            icon: Icon(Icons.history, size: 18, color: muted),
+                                            tooltip: 'Historial de aportes',
+                                            onPressed: () => _showHistory(g),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(
+                                              g.shareToken != null ? Icons.share : Icons.share_outlined,
+                                              size: 18,
+                                              color: g.shareToken != null ? AppGradients.purple : muted,
+                                            ),
+                                            tooltip: 'Compartir',
+                                            onPressed: () => _share(g),
+                                          ),
                                           if (g.completed)
                                             const Icon(Icons.check_circle, color: Colors.greenAccent, size: 20),
                                         ],
@@ -255,6 +302,76 @@ class _GoalsScreenState extends State<GoalsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _ShareGoalDialog extends StatelessWidget {
+  final String name;
+  final String url;
+  const _ShareGoalDialog({required this.name, required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return AlertDialog(
+      title: Text('Compartir "$name"'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Cualquiera con este link puede ver tu progreso (sin tus otros datos).', style: TextStyle(color: muted, fontSize: 13)),
+          const SizedBox(height: 12),
+          SelectableText(url, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, 'disable'),
+          style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+          child: const Text('Desactivar enlace'),
+        ),
+        TextButton(
+          onPressed: () {
+            Share.share(url);
+            Navigator.pop(context);
+          },
+          child: const Text('Compartir'),
+        ),
+      ],
+    );
+  }
+}
+
+class _HistoryDialog extends StatelessWidget {
+  final String name;
+  final List<GoalContribution> contributions;
+  final String Function(double) money;
+  const _HistoryDialog({required this.name, required this.contributions, required this.money});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return AlertDialog(
+      title: Text('Aportes a "$name"'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: contributions.isEmpty
+            ? Text('Aún no hay aportes registrados.', style: TextStyle(color: muted))
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: contributions.length,
+                itemBuilder: (context, i) {
+                  final c = contributions[i];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(money(c.amount), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text([c.date, if (c.concept.isNotEmpty) c.concept].join(' · ')),
+                  );
+                },
+              ),
+      ),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cerrar'))],
     );
   }
 }

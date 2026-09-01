@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import '../api_client.dart';
 import '../widgets/animated_money.dart';
@@ -149,6 +150,76 @@ class _AnnualScreenState extends State<AnnualScreen> {
                 const SizedBox(height: 12),
               ],
             ),
+          ),
+        ),
+        if (s.totalGasto + s.totalAhorro + s.totalDeuda > 0) ...[
+          const SizedBox(height: 16),
+          FadeSlideIn(
+            index: 3,
+            child: GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Composición anual', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 14),
+                  _CompositionChart(gasto: s.totalGasto, ahorro: s.totalAhorro, deuda: s.totalDeuda),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _CompositionChart extends StatelessWidget {
+  final double gasto;
+  final double ahorro;
+  final double deuda;
+  const _CompositionChart({required this.gasto, required this.ahorro, required this.deuda});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final total = gasto + ahorro + deuda;
+    final items = [
+      ('Gastos', gasto, AppGradients.violet),
+      ('Ahorro', ahorro, AppGradients.cyan),
+      ('Deudas', deuda, const Color(0xFFEF4444)),
+    ].where((e) => e.$2 > 0).toList();
+
+    return Row(
+      children: [
+        SizedBox(
+          height: 120,
+          width: 120,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 34,
+              sections: [for (final e in items) PieChartSectionData(value: e.$2, color: e.$3, showTitle: false, radius: 26)],
+            ),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final e in items)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Container(width: 10, height: 10, decoration: BoxDecoration(color: e.$3, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(e.$1, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
+                      Text('${(e.$2 / total * 100).round()}%', style: TextStyle(fontSize: 12, color: muted)),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
       ],

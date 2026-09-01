@@ -27,6 +27,8 @@ class DashboardData {
   final double spendingLimit;
   final double safeToSpendPerDay;
   final int daysRemaining;
+  final int savingsStreak;
+  final HouseholdTotals? household;
   final List<GroupTotal> groups;
   final List<TransactionEntry> recentTransactions;
 
@@ -41,6 +43,8 @@ class DashboardData {
     required this.spendingLimit,
     required this.safeToSpendPerDay,
     required this.daysRemaining,
+    required this.savingsStreak,
+    required this.household,
     required this.groups,
     required this.recentTransactions,
   });
@@ -56,6 +60,8 @@ class DashboardData {
     spendingLimit: (j['spendingLimit'] as num).toDouble(),
     safeToSpendPerDay: (j['safeToSpendPerDay'] as num).toDouble(),
     daysRemaining: j['daysRemaining'],
+    savingsStreak: j['savingsStreak'] ?? 0,
+    household: j['household'] != null ? HouseholdTotals.fromJson(j['household']) : null,
     groups: (j['groups'] as List).map((g) => GroupTotal.fromJson(g)).toList(),
     recentTransactions: (j['recentTransactions'] as List)
         .map((t) => TransactionEntry.fromJson(t))
@@ -91,6 +97,7 @@ class TransactionEntry {
   final String date;
   final String concept;
   final String paymentMethod;
+  final bool flagged;
   final CategoryOption category;
   TransactionEntry({
     required this.id,
@@ -98,6 +105,7 @@ class TransactionEntry {
     required this.date,
     required this.concept,
     required this.paymentMethod,
+    required this.flagged,
     required this.category,
   });
   factory TransactionEntry.fromJson(Map<String, dynamic> j) => TransactionEntry(
@@ -106,7 +114,61 @@ class TransactionEntry {
     date: j['date'],
     concept: j['concept'] ?? '',
     paymentMethod: j['paymentMethod'] ?? 'debito',
+    flagged: j['flagged'] ?? false,
     category: CategoryOption.fromJson(j['category']),
+  );
+}
+
+class RecurringEntry {
+  final String id;
+  final double amount;
+  final String concept;
+  final int dayOfMonth;
+  final bool active;
+  final CategoryOption category;
+  RecurringEntry({
+    required this.id,
+    required this.amount,
+    required this.concept,
+    required this.dayOfMonth,
+    required this.active,
+    required this.category,
+  });
+  factory RecurringEntry.fromJson(Map<String, dynamic> j) => RecurringEntry(
+    id: j['id'],
+    amount: (j['amount'] as num).toDouble(),
+    concept: j['concept'] ?? '',
+    dayOfMonth: j['dayOfMonth'],
+    active: j['active'],
+    category: CategoryOption.fromJson(j['category']),
+  );
+}
+
+class GoalContribution {
+  final String id;
+  final double amount;
+  final String date;
+  final String concept;
+  GoalContribution({required this.id, required this.amount, required this.date, required this.concept});
+  factory GoalContribution.fromJson(Map<String, dynamic> j) => GoalContribution(
+    id: j['id'],
+    amount: (j['amount'] as num).toDouble(),
+    date: j['date'],
+    concept: j['concept'] ?? '',
+  );
+}
+
+class HouseholdTotals {
+  final double income;
+  final double gastos;
+  final double deudas;
+  final double disponible;
+  HouseholdTotals({required this.income, required this.gastos, required this.deudas, required this.disponible});
+  factory HouseholdTotals.fromJson(Map<String, dynamic> j) => HouseholdTotals(
+    income: (j['income'] as num).toDouble(),
+    gastos: (j['gastos'] as num).toDouble(),
+    deudas: (j['deudas'] as num).toDouble(),
+    disponible: (j['disponible'] as num).toDouble(),
   );
 }
 
@@ -150,6 +212,7 @@ class GoalEntry {
   final double progressPct;
   final int? monthsLeft;
   final double? monthlyNeeded;
+  final String? shareToken;
   GoalEntry({
     required this.categoryId,
     required this.name,
@@ -162,6 +225,7 @@ class GoalEntry {
     required this.progressPct,
     required this.monthsLeft,
     required this.monthlyNeeded,
+    required this.shareToken,
   });
   factory GoalEntry.fromJson(Map<String, dynamic> j) => GoalEntry(
     categoryId: j['categoryId'],
@@ -175,6 +239,7 @@ class GoalEntry {
     progressPct: (j['progressPct'] as num).toDouble(),
     monthsLeft: j['monthsLeft'],
     monthlyNeeded: (j['monthlyNeeded'] as num?)?.toDouble(),
+    shareToken: j['shareToken'],
   );
 }
 
@@ -377,12 +442,37 @@ class ApiClient {
     return DashboardData.fromJson(jsonDecode(res.body));
   }
 
-  Future<List<CategoryOption>> getCategories() async {
-    final res = await http.get(Uri.parse('$apiBaseUrl/api/mobile/categories'), headers: _authHeaders);
+  Future<List<CategoryOption>> getCategories({bool archived = false}) async {
+    final qs = archived ? '?archived=true' : '';
+    final res = await http.get(Uri.parse('$apiBaseUrl/api/mobile/categories$qs'), headers: _authHeaders);
     if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
     if (res.statusCode != 200) throw ApiException('No se pudieron cargar las categorías', res.statusCode);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (body['categories'] as List).map((c) => CategoryOption.fromJson(c)).toList();
+  }
+
+  Future<String> addCategory({required String name, required String group, String? emoji}) async {
+    final res = await http.post(
+      Uri.parse('$apiBaseUrl/api/mobile/categories'),
+      headers: _authHeaders,
+      body: jsonEncode({'name': name, 'group': group, if (emoji != null) 'emoji': emoji}),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 201) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(body['error'] ?? 'No se pudo crear la categoría', res.statusCode);
+    }
+    return (jsonDecode(res.body) as Map<String, dynamic>)['id'];
+  }
+
+  Future<void> setCategoryArchived(String id, bool archived) async {
+    final res = await http.patch(
+      Uri.parse('$apiBaseUrl/api/mobile/categories/$id'),
+      headers: _authHeaders,
+      body: jsonEncode({'archived': archived}),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo actualizar la categoría', res.statusCode);
   }
 
   Future<void> addTransaction({
@@ -431,6 +521,63 @@ class ApiClient {
     if (res.statusCode != 200) throw ApiException('No se pudo eliminar', res.statusCode);
   }
 
+  Future<void> setTransactionFlagged(String id, bool flagged) async {
+    final res = await http.patch(
+      Uri.parse('$apiBaseUrl/api/mobile/transactions/$id'),
+      headers: _authHeaders,
+      body: jsonEncode({'flagged': flagged}),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo actualizar', res.statusCode);
+  }
+
+  Future<List<RecurringEntry>> getRecurring() async {
+    final res = await http.get(Uri.parse('$apiBaseUrl/api/mobile/recurring'), headers: _authHeaders);
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudieron cargar los recurrentes', res.statusCode);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['recurring'] as List).map((r) => RecurringEntry.fromJson(r)).toList();
+  }
+
+  Future<void> addRecurring({
+    required String categoryId,
+    required double amount,
+    String? concept,
+    int? dayOfMonth,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$apiBaseUrl/api/mobile/recurring'),
+      headers: _authHeaders,
+      body: jsonEncode({
+        'categoryId': categoryId,
+        'amount': amount,
+        'concept': concept ?? '',
+        if (dayOfMonth != null) 'dayOfMonth': dayOfMonth,
+      }),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 201) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(body['error'] ?? 'No se pudo crear el recurrente', res.statusCode);
+    }
+  }
+
+  Future<void> setRecurringActive(String id, bool active) async {
+    final res = await http.patch(
+      Uri.parse('$apiBaseUrl/api/mobile/recurring/$id'),
+      headers: _authHeaders,
+      body: jsonEncode({'active': active}),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo actualizar', res.statusCode);
+  }
+
+  Future<void> deleteRecurring(String id) async {
+    final res = await http.delete(Uri.parse('$apiBaseUrl/api/mobile/recurring/$id'), headers: _authHeaders);
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo eliminar', res.statusCode);
+  }
+
   Future<List<BudgetCategoryLine>> getBudget({int? year, int? month}) async {
     final qs = (year != null && month != null) ? '?year=$year&month=$month' : '';
     final res = await http.get(Uri.parse('$apiBaseUrl/api/mobile/budget$qs'), headers: _authHeaders);
@@ -455,6 +602,21 @@ class ApiClient {
     if (res.statusCode != 200) throw ApiException('No se pudo actualizar el presupuesto', res.statusCode);
   }
 
+  Future<void> setBudgetAlertThreshold(String categoryId, int pct, {int? year, int? month}) async {
+    final res = await http.patch(
+      Uri.parse('$apiBaseUrl/api/mobile/budget'),
+      headers: _authHeaders,
+      body: jsonEncode({
+        'categoryId': categoryId,
+        'alertThresholdPct': pct,
+        if (year != null) 'year': year,
+        if (month != null) 'month': month,
+      }),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo actualizar el umbral', res.statusCode);
+  }
+
   Future<List<GoalEntry>> getGoals() async {
     final res = await http.get(Uri.parse('$apiBaseUrl/api/mobile/goals'), headers: _authHeaders);
     if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
@@ -476,12 +638,88 @@ class ApiClient {
     }
   }
 
+  Future<String> enableGoalSharing(String categoryId) async {
+    final res = await http.post(
+      Uri.parse('$apiBaseUrl/api/mobile/goals/$categoryId/share'),
+      headers: _authHeaders,
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo activar el link', res.statusCode);
+    return (jsonDecode(res.body) as Map<String, dynamic>)['shareToken'];
+  }
+
+  Future<void> disableGoalSharing(String categoryId) async {
+    final res = await http.delete(
+      Uri.parse('$apiBaseUrl/api/mobile/goals/$categoryId/share'),
+      headers: _authHeaders,
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo desactivar el link', res.statusCode);
+  }
+
+  Future<List<GoalContribution>> getGoalContributions(String categoryId) async {
+    final res = await http.get(
+      Uri.parse('$apiBaseUrl/api/mobile/goals/$categoryId/contributions'),
+      headers: _authHeaders,
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo cargar el historial', res.statusCode);
+    final body = jsonDecode(res.body) as Map<String, dynamic>;
+    return (body['contributions'] as List).map((c) => GoalContribution.fromJson(c)).toList();
+  }
+
   Future<List<DebtEntry>> getDebts() async {
     final res = await http.get(Uri.parse('$apiBaseUrl/api/mobile/debts'), headers: _authHeaders);
     if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
     if (res.statusCode != 200) throw ApiException('No se pudieron cargar las deudas', res.statusCode);
     final body = jsonDecode(res.body) as Map<String, dynamic>;
     return (body['debts'] as List).map((d) => DebtEntry.fromJson(d)).toList();
+  }
+
+  Future<void> addDebt({
+    required String name,
+    required double monthlyPayment,
+    double? totalOwed,
+    String? emoji,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$apiBaseUrl/api/mobile/debts'),
+      headers: _authHeaders,
+      body: jsonEncode({
+        'name': name,
+        'monthlyPayment': monthlyPayment,
+        if (totalOwed != null) 'totalOwed': totalOwed,
+        if (emoji != null) 'emoji': emoji,
+      }),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 201) {
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      throw ApiException(body['error'] ?? 'No se pudo crear la deuda', res.statusCode);
+    }
+  }
+
+  Future<void> updateDebt(String categoryId, {double? monthlyPayment, double? totalOwed, bool clearTotalOwed = false}) async {
+    final res = await http.patch(
+      Uri.parse('$apiBaseUrl/api/mobile/debts/$categoryId'),
+      headers: _authHeaders,
+      body: jsonEncode({
+        if (monthlyPayment != null) 'monthlyPayment': monthlyPayment,
+        if (clearTotalOwed) 'totalOwed': null else if (totalOwed != null) 'totalOwed': totalOwed,
+      }),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo actualizar la deuda', res.statusCode);
+  }
+
+  Future<void> setDebtActive(String categoryId, bool active) async {
+    final res = await http.patch(
+      Uri.parse('$apiBaseUrl/api/mobile/debts/$categoryId'),
+      headers: _authHeaders,
+      body: jsonEncode({'active': active}),
+    );
+    if (res.statusCode == 401) throw ApiException('Sesión expirada', 401);
+    if (res.statusCode != 200) throw ApiException('No se pudo actualizar la deuda', res.statusCode);
   }
 
   Future<List<IncomeEntry>> getIncome({int? year, int? month}) async {

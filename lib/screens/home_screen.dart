@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -224,9 +225,29 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         Center(
-          child: Text(
-            'Disponible este mes',
-            style: TextStyle(color: muted, fontSize: 13),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Disponible este mes', style: TextStyle(color: muted, fontSize: 13)),
+              if (d.savingsStreak > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.local_fire_department, size: 13, color: Colors.orange),
+                      const SizedBox(width: 2),
+                      Text('${d.savingsStreak}', style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
         const SizedBox(height: 4),
@@ -267,6 +288,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+        if (d.household != null) ...[
+          const SizedBox(height: 20),
+          _HouseholdCard(household: d.household!, currency: d.currency),
+        ],
         const SizedBox(height: 28),
         GlassCard(
           child: Column(
@@ -292,6 +317,19 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+        if (d.groups.any((g) => g.actual > 0)) ...[
+          const SizedBox(height: 20),
+          GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Distribución de gastos', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 14),
+                _GroupPieChart(groups: d.groups),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -578,6 +616,129 @@ class _BottomActionBarState extends State<_BottomActionBar> {
                 Text('Gasto', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
               ],
             ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HouseholdCard extends StatelessWidget {
+  final HouseholdTotals household;
+  final String currency;
+  const _HouseholdCard({required this.household, required this.currency});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.favorite, size: 16, color: Colors.pinkAccent),
+              const SizedBox(width: 6),
+              const Text('En pareja', style: TextStyle(fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _HouseholdStat(label: 'Ingresos', value: household.income, currency: currency),
+              _HouseholdStat(label: 'Gastos', value: household.gastos, currency: currency),
+              _HouseholdStat(label: 'Deudas', value: household.deudas, currency: currency),
+              _HouseholdStat(label: 'Disponible', value: household.disponible, currency: currency, emphasize: true),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HouseholdStat extends StatelessWidget {
+  final String label;
+  final double value;
+  final String currency;
+  final bool emphasize;
+  const _HouseholdStat({required this.label, required this.value, required this.currency, this.emphasize = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(color: muted, fontSize: 11)),
+        const SizedBox(height: 2),
+        AnimatedMoney(
+          value: value,
+          currency: currency,
+          style: TextStyle(fontSize: 13, fontWeight: emphasize ? FontWeight.w800 : FontWeight.w600),
+        ),
+      ],
+    );
+  }
+}
+
+class _GroupPieChart extends StatelessWidget {
+  final List<GroupTotal> groups;
+  const _GroupPieChart({required this.groups});
+
+  static const _colors = {
+    'necesidad': AppGradients.violet,
+    'deseo': AppGradients.purple,
+    'futuro': AppGradients.cyan,
+    'deuda': Color(0xFFEF4444),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final muted = Theme.of(context).colorScheme.onSurfaceVariant;
+    final spendable = groups.where((g) => g.actual > 0).toList();
+    final total = spendable.fold<double>(0, (s, g) => s + g.actual);
+    if (total <= 0) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        SizedBox(
+          height: 120,
+          width: 120,
+          child: PieChart(
+            PieChartData(
+              sectionsSpace: 2,
+              centerSpaceRadius: 34,
+              sections: [
+                for (final g in spendable)
+                  PieChartSectionData(
+                    value: g.actual,
+                    color: _colors[g.group] ?? muted,
+                    showTitle: false,
+                    radius: 26,
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 20),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final g in spendable)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Container(width: 10, height: 10, decoration: BoxDecoration(color: _colors[g.group] ?? muted, shape: BoxShape.circle)),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(groupLabels[g.group] ?? g.group, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
+                      Text('${(g.actual / total * 100).round()}%', style: TextStyle(fontSize: 12, color: muted)),
+                    ],
+                  ),
+                ),
+            ],
           ),
         ),
       ],
